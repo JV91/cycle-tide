@@ -439,6 +439,16 @@ async function init() {
             if (e.key === 'ArrowRight') { e.preventDefault(); stepDay(1); }
         });
 
+        // Re-render the chart when crossing the mobile/desktop breakpoint
+        // (rotation, window resize) so its geometry matches the viewport.
+        let _resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(_resizeTimer);
+            _resizeTimer = setTimeout(() => {
+                if (chartGeometryChanged()) renderScoreChart();
+            }, 200);
+        });
+
         // Live updates are always on — no toggle, the way an exchange behaves.
         startLive();
     } catch (err) {

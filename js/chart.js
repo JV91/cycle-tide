@@ -10,7 +10,10 @@
 // crossovers that are artifacts of axis alignment rather than real signal.
 // Stacked panels let you read "score was high while price was low" off the
 // vertical alignment, which is the actual question, without that distortion.
-const CHART = {
+// Desktop geometry. On a phone the same CSS width maps onto a much narrower
+// viewBox, which proportionally enlarges text and strokes — otherwise axis
+// labels render at ~4 effective pixels and are unreadable.
+const CHART_DESKTOP = {
     w: 1000,
     h: 300,            // score-only height
     hWithPrice: 450,   // total height when the price panel is shown
@@ -18,6 +21,30 @@ const CHART = {
     panelGap: 22,
     padL: 44, padR: 16, padT: 16, padB: 28,
 };
+
+const CHART_MOBILE = {
+    w: 460,
+    h: 240,
+    hWithPrice: 400,
+    priceH: 120,
+    panelGap: 20,
+    padL: 40, padR: 10, padT: 14, padB: 26,
+};
+
+// Mutable so the render path can keep reading CHART.* unchanged.
+let CHART = { ...CHART_DESKTOP };
+
+function syncChartGeometry() {
+    const narrow = window.matchMedia('(max-width: 640px)').matches;
+    CHART = { ...(narrow ? CHART_MOBILE : CHART_DESKTOP) };
+}
+
+// True when the viewport has crossed the breakpoint since the last render,
+// so the caller knows a re-render is actually needed.
+function chartGeometryChanged() {
+    const narrow = window.matchMedia('(max-width: 640px)').matches;
+    return (narrow ? CHART_MOBILE.w : CHART_DESKTOP.w) !== CHART.w;
+}
 
 // Price panel visibility (persisted so it survives reloads).
 let showPricePanel = (() => {
@@ -68,6 +95,7 @@ function splitByConfidence(pts) {
 function renderScoreChart() {
     const svg = document.getElementById('scoreChart');
     if (!svg) return;
+    syncChartGeometry();
 
     const history = scoreHistorySeries();
     if (!history.length) {
@@ -151,14 +179,19 @@ function renderScoreChart() {
         `<line x1="${padL}" x2="${w - padR}" y1="${y(v)}" y2="${y(v)}" class="chart-grid"/>
          <text x="${padL - 8}" y="${y(v) + 4}" text-anchor="end" class="chart-axis">${v}</text>`).join('');
 
-    // Year ticks — span every panel, labelled once at the very bottom.
+    // Year ticks — span every panel, labelled once at the very bottom. On a
+    // narrow viewBox the labels would collide, so only every other year is
+    // labelled there (the gridline still marks each one).
     const years = [];
     const y0 = new Date(tMin).getUTCFullYear(), y1 = new Date(tMax).getUTCFullYear();
+    const labelEvery = (w < 600 && (y1 - y0) > 6) ? 2 : 1;
     for (let yr = y0; yr <= y1; yr++) {
         const ts = Date.UTC(yr, 0, 1);
         if (ts < tMin || ts > tMax) continue;
+        const showLabel = (yr - y0) % labelEvery === 0;
         years.push(`<line x1="${x(ts)}" x2="${x(ts)}" y1="${padT}" y2="${plotBottom}" class="chart-grid-v"/>
-                    <text x="${x(ts)}" y="${plotBottom + 16}" text-anchor="middle" class="chart-axis">${yr}</text>`);
+                    ${showLabel ? `<text x="${x(ts)}" y="${plotBottom + 16}" text-anchor="middle" class="chart-axis">${
+                        w < 600 ? "'" + String(yr).slice(2) : yr}</text>` : ''}`);
     }
 
     // Halving markers — run through both panels so the alignment is readable.
@@ -199,7 +232,10 @@ function renderScoreChart() {
     ` : '';
 
     svg.setAttribute('viewBox', `0 0 ${w} ${totalH}`);
-    svg.style.height = totalH + 'px';
+    // Let the SVG scale to its container width at the viewBox aspect ratio,
+    // rather than pinning a fixed pixel height that squashes it on a phone.
+    svg.style.aspectRatio = `${w} / ${totalH}`;
+    svg.style.height = 'auto';
     svg.innerHTML = `
         ${bands}
         ${uncertainty}
@@ -328,14 +364,21 @@ function attachChartHover(svg, history, projPoints, x, y, tMin, tMax, priceCtx) 
         tip.style.display = 'none';
     });
 
-    // Click to load that date into the dashboard (real history only).
+    // Click/tap to load that date into the dashboard (real history only).
     hit.addEventListener('click', e => {
         const rect = svg.getBoundingClientRect();
         const svgX = ((e.clientX - rect.left) / rect.width) * CHART.w;
         const ts = tMin + ((svgX - CHART.padL) / (CHART.w - CHART.padL - CHART.padR)) * (tMax - tMin);
         const { last } = dayBounds();
-        if (ts <= last) {
-            renderFor(ts);
+        if (ts > last) return;
+
+        renderFor(ts);
+
+        // On a narrow screen the cards sit far above the chart, so scrolling
+        // to them yanks the view away from the thing being tapped. Leave the
+        // reader where they are; the date badge confirms the change instead.
+        const isNarrow = window.matchMedia('(max-width: 640px)').matches;
+        if (!isNarrow) {
             document.querySelector('.grid-top').scrollIntoView({ behavior: 'smooth' });
         }
     });

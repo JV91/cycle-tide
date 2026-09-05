@@ -598,9 +598,10 @@ body {
 
 .score-chart {
     width: 100%;
-    height: 440px; /* set per-render by chart.js to match the panel count */
+    height: auto;      /* chart.js sets an explicit px height per render */
     display: block;
     cursor: crosshair;
+    touch-action: pan-y; /* let vertical scrolling through the chart still work */
 }
 
 .chart-line-price {
@@ -785,4 +786,54 @@ body {
     color: var(--text-muted);
     font-size: 11.5px;
     padding-top: 10px;
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+    /* Tighter gutters, and never let a wide child force a horizontal scroll. */
+    .container { padding: 20px 14px 40px; overflow-x: hidden; }
+    body { overflow-x: hidden; }
+
+    .top-header h1 { font-size: 23px; line-height: 1.2; }
+    .lede { font-size: 13.5px; }
+
+    /* The status row was the main overflow culprit: ticker + timestamp +
+       button could not fit side by side, so the button wrapped its own text. */
+    .status-row {
+        flex-wrap: wrap;
+        gap: 10px;
+        row-gap: 8px;
+    }
+    .live-ticker {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        box-sizing: border-box;
+    }
+    .live-price { font-size: 16px; }
+    .refresh-btn { white-space: nowrap; flex: 0 0 auto; }
+    .live-updated { flex: 1 1 auto; }
+
+    .date-browser { gap: 6px; }
+    .date-browser .date-input { flex: 1 1 auto; min-width: 0; }
+    #asOfBadge { flex: 1 1 100%; }
+
+    .card { padding: 16px 14px; }
+
+    /* Score card: gauge shrinks so the stat list keeps room. */
+    .gauge-wrap { width: 160px; height: 160px; }
+    .gauge-value { font-size: 36px; }
+    .confidence-val { max-width: 150px; }
+
+    /* Legend reads as a stacked list rather than a cramped wrap. */
+    .chart-legend { gap: 8px 14px; font-size: 11.5px; }
+
+    .backtest-table { font-size: 12px; }
+    .backtest-table th,
+    .backtest-table td { padding: 8px 9px; }
+
+    .projection-notes { grid-template-columns: 1fr; gap: 12px; }
+    .proj-assumptions { gap: 8px; }
+    .proj-assumptions input { width: 100%; }
+    .proj-assumptions label { flex: 1 1 100%; }
 }
