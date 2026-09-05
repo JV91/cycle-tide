@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cycle Tide — BTC Accumulation / Distribution Monitor</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0e1a'/%3E%3Cpath d='M4 20 Q10 12 16 18 T28 10' stroke='%232fd9a8' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="container">
+
+    <header class="top-header">
+        <div class="eyebrow">CYCLE TIDE · v0.1</div>
+        <h1>BTC Accumulation / Distribution Monitor</h1>
+        <p class="lede">
+            A weighted, explainable read on where current conditions sit relative to prior
+            Bitcoin cycles. Not a price prediction — a historical risk/reward context tool.
+            Deep water = accumulation-favorable; low tide = distribution risk.
+        </p>
+        <div class="status-row">
+            <span class="live-ticker">
+                <span class="live-ticker-label">BTC/USD</span>
+                <span id="livePrice" class="live-price">—</span>
+                <span id="liveChange" class="live-change chg-flat"></span>
+                <span id="liveStatus" class="live-dot live-pending" title="Connection status"></span>
+            </span>
+            <span class="live-updated">updated <span id="liveUpdated">—</span></span>
+            <button id="refreshBtn" class="refresh-btn">Refresh data</button>
+        </div>
+
+        <div class="date-browser">
+            <span class="date-browser-label">AS OF</span>
+            <button id="prevDay" class="date-nav" title="Previous day (←)">‹</button>
+            <input type="date" id="viewDate" class="date-input">
+            <button id="nextDay" class="date-nav" title="Next day (→)">›</button>
+            <button id="todayBtn" class="refresh-btn">Latest</button>
+            <span id="asOfBadge" class="asof-badge asof-live">Viewing: latest</span>
+        </div>
+    </header>
+
+    <main class="grid-top">
+        <!-- Score gauge card -->
+        <section class="card score-card">
+            <div class="gauge-wrap">
+                <svg viewBox="0 0 200 200" class="score-gauge">
+                    <circle cx="100" cy="100" r="80" class="score-ring-bg"/>
+                    <circle id="scoreRing" cx="100" cy="100" r="80" class="score-ring-fg"
+                            transform="rotate(-90 100 100)"/>
+                </svg>
+                <div class="gauge-center">
+                    <div id="scoreValue" class="gauge-value">—</div>
+                    <div class="gauge-caption">CYCLE SCORE</div>
+                </div>
+            </div>
+
+            <div id="phaseBadge" class="phase-badge">—</div>
+            <div id="signalBadge" class="signal-pill">—</div>
+            <div id="signalSub" class="signal-sub"></div>
+
+            <dl class="stat-list">
+                <div class="stat-row"><dt>BTC price</dt><dd id="btcPrice">—</dd></div>
+                <div class="stat-row"><dt>ATH</dt><dd id="athPrice">—</dd></div>
+                <div class="stat-row"><dt>Drawdown</dt><dd id="drawdownVal">—</dd></div>
+                <div class="stat-row"><dt>Days since ATH</dt><dd id="daysSinceAth">—</dd></div>
+                <div class="stat-row"><dt>Confidence</dt><dd id="confidenceVal" class="confidence-val">—</dd></div>
+            </dl>
+        </section>
+
+        <!-- Breakdown card -->
+        <section class="card breakdown-card">
+            <h2 class="card-title" id="breakdownTitle">SCORE BREAKDOWN</h2>
+            <div id="breakdownList" class="breakdown-list"></div>
+        </section>
+    </main>
+
+    <section class="card chart-card">
+        <h2 class="card-title">CYCLE SCORE OVER TIME — HISTORY &amp; PROJECTION</h2>
+        <div class="chart-legend">
+            <span class="lg-item"><span class="lg-swatch lg-real"></span>Computed score</span>
+            <span class="lg-item"><span class="lg-swatch lg-weak"></span>Fewer signals available</span>
+            <span class="lg-item"><span class="lg-swatch lg-proj"></span>Schedule-based projection</span>
+            <span class="lg-item"><span class="lg-swatch lg-band-good"></span>Accumulate zone</span>
+            <span class="lg-item"><span class="lg-swatch lg-band-bad"></span>Distribute zone</span>
+            <span class="lg-item"><span class="lg-swatch lg-price"></span>BTC price</span>
+            <span class="lg-item"><span class="lg-swatch lg-price-band"></span>Assumed price range</span>
+            <label class="lg-toggle">
+                <input type="checkbox" id="togglePrice" checked>
+                Show price panel
+            </label>
+            <span class="lg-item lg-hint">⌗ = halving · click the chart to load a date</span>
+        </div>
+        <div class="chart-wrap">
+            <svg id="scoreChart" class="score-chart" preserveAspectRatio="none"></svg>
+            <div id="chartTooltip" class="chart-tooltip"></div>
+        </div>
+        <div id="projectionNotes" class="projection-notes"></div>
+    </section>
+
+    <section class="card backtest-card">
+        <h2 class="card-title">HISTORICAL BACKTEST — SCORE AT MAJOR CYCLE EVENTS</h2>
+        <p class="backtest-note">
+            Rows marked <strong>computed</strong> are scored live from the same data the
+            dashboard uses — click one to load its full breakdown above. Rows marked
+            <strong>reference</strong> predate the free on-chain APIs' history (~2022) and
+            keep a documented approximate reading instead.
+        </p>
+        <div class="table-wrap">
+            <table class="backtest-table">
+                <thead>
+                    <tr><th>Event</th><th>Score</th><th>Signal</th><th>Phase</th><th>Source</th></tr>
+                </thead>
+                <tbody id="backtestBody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <footer class="app-footer">
+        <p>
+            Data: on-chain via bitcoin-data.com · stablecoin supply via DefiLlama ·
+            sentiment via Alternative.me · price &amp; funding via Binance.
+            Educational tool only — not financial advice.
+        </p>
+    </footer>
+</div>
+
+<script src="js/constants.js"></script>
+<script src="js/data.js"></script>
+<script src="js/indicators.js"></script>
+<script src="js/projection.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/live.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
