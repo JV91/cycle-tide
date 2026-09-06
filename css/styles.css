@@ -984,3 +984,41 @@ body {
     margin-left: -2px;
 }
 .info-interacts p { color: var(--text-secondary); }
+
+/* ── Asset chart tooltip ────────────────────────────────────────────── */
+
+#assetTooltip .tt-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 12px;
+}
+
+.tt-key {
+    min-width: 42px;
+    font-weight: 700;
+}
+.tt-key-a { color: var(--good); }
+.tt-key-b { color: #7aa2f7; }
+
+.tt-idx {
+    min-width: 44px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+.tt-raw {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+.tt-rel {
+    margin-top: 6px;
+    padding-top: 5px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+}

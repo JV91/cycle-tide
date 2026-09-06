@@ -401,7 +401,17 @@ function renderAssetChart(key) {
         ${years.join('')}
         <path d="${path(bi)}" class="chart-line-price"/>
         <path d="${path(ai)}" class="chart-line-real"/>
+        <line id="assetCrosshair" x1="0" x2="0" y1="${padT}" y2="${h - padB}"
+              class="chart-crosshair" style="display:none"/>
+        <circle id="assetDotA" r="4" class="chart-hover-dot" style="display:none"/>
+        <circle id="assetDotB" r="4" class="chart-hover-dot" style="display:none"/>
+        <rect id="assetHit" x="${padL}" y="${padT}" width="${w - padL - padR}"
+              height="${h - padT - padB}" fill="transparent"/>
     `;
+
+    // Remove any legend from a previous render — this function runs again on
+    // every explainer toggle, and appending would stack duplicates.
+    svg.parentElement.parentElement.querySelectorAll('.asset-legend').forEach(n => n.remove());
 
     const legend = document.createElement('div');
     legend.className = 'chart-legend asset-legend';
@@ -411,4 +421,102 @@ function renderAssetChart(key) {
         <span class="lg-item lg-hint">log scale · both = 100 at ${new Date(start).toISOString().slice(0, 10)}${
             pivot && start === pivot ? ` · from ${meta.label} treasury pivot` : ''}</span>`;
     svg.parentElement.parentElement.insertBefore(legend, svg.parentElement);
+
+    attachAssetHover(svg, { key, ai, bi, a, b, x, y, tMin, tMax, h });
+}
+
+// Crosshair + tooltip for the indexed comparison chart. Shows BOTH series at
+// the hovered date — the whole point of the chart is the relationship between
+// them, so reading one without the other would be half the story.
+function attachAssetHover(svg, ctx) {
+    const { key, ai, bi, a, b, x, y, tMin, tMax, h } = ctx;
+    const hit = svg.querySelector('#assetHit');
+    const cross = svg.querySelector('#assetCrosshair');
+    const dotA = svg.querySelector('#assetDotA');
+    const dotB = svg.querySelector('#assetDotB');
+    const tip = document.getElementById('assetTooltip');
+    if (!hit || !tip) return;
+
+    let pinned = false;
+
+    const nearest = (arr, ts) => {
+        let out = arr[0];
+        for (const p of arr) {
+            if (Math.abs(p.ts - ts) < Math.abs(out.ts - ts)) out = p;
+        }
+        return out;
+    };
+    // Raw (unindexed) price at a timestamp, so the tooltip can show real money
+    // alongside the indexed value.
+    const rawAt = (arr, ts) => {
+        let out = null;
+        for (const p of arr) {
+            if (!out || Math.abs(p.ts - ts) < Math.abs(out.ts - ts)) out = p;
+        }
+        return out ? out.close : null;
+    };
+
+    function show(clientX) {
+        const rect = svg.getBoundingClientRect();
+        const svgX = ((clientX - rect.left) / rect.width) * CHART.w;
+        const ts = tMin + ((svgX - CHART.padL) / (CHART.w - CHART.padL - CHART.padR)) * (tMax - tMin);
+
+        const na = nearest(ai, ts);
+        const nb = nearest(bi, ts);
+
+        cross.style.display = '';
+        cross.setAttribute('x1', x(na.ts));
+        cross.setAttribute('x2', x(na.ts));
+
+        dotA.style.display = '';
+        dotA.setAttribute('cx', x(na.ts));
+        dotA.setAttribute('cy', y(na.v));
+        dotB.style.display = '';
+        dotB.setAttribute('cx', x(nb.ts));
+        dotB.setAttribute('cy', y(nb.v));
+
+        const rawA = rawAt(a, na.ts);
+        const rawB = rawAt(b, nb.ts);
+        // Relative performance since the index date is the number that matters.
+        const rel = na.v - nb.v;
+
+        tip.style.display = 'block';
+        tip.innerHTML = `
+            <div class="tt-date">${new Date(na.ts).toISOString().slice(0, 10)}</div>
+            <div class="tt-row"><span class="tt-key tt-key-a">${escapeHtml(key)}</span>
+                <span class="tt-idx">${na.v.toFixed(1)}</span>
+                <span class="tt-raw">${rawA !== null ? fmtEq(rawA) : ''}</span></div>
+            <div class="tt-row"><span class="tt-key tt-key-b">BTC</span>
+                <span class="tt-idx">${nb.v.toFixed(1)}</span>
+                <span class="tt-raw">${rawB !== null ? fmtUSD(rawB) : ''}</span></div>
+            <div class="tt-rel ${rel >= 0 ? 'val-up' : 'val-down'}">
+                ${rel >= 0 ? '+' : ''}${rel.toFixed(1)} pts vs BTC since start</div>`;
+
+        // Dodge the cursor vertically, clamp horizontally inside the chart.
+        const pxPerUnitY = rect.height / h;
+        const topPx = y(Math.max(na.v, nb.v)) * pxPerUnitY;
+        tip.style.top = `${Math.max(0, topPx - tip.offsetHeight - 12)}px`;
+        const leftPct = (x(na.ts) / CHART.w) * 100;
+        const halfPct = (tip.offsetWidth / 2 / rect.width) * 100;
+        tip.style.left = `${Math.min(100 - halfPct, Math.max(halfPct, leftPct)).toFixed(2)}%`;
+    }
+
+    function hide() {
+        if (pinned) return;
+        cross.style.display = 'none';
+        dotA.style.display = 'none';
+        dotB.style.display = 'none';
+        tip.style.display = 'none';
+    }
+
+    hit.addEventListener('mousemove', e => { if (!pinned) show(e.clientX); });
+    hit.addEventListener('mouseleave', hide);
+
+    // Click pins the readout. There is no date browser on these tabs, so a
+    // click has no other job — and pinning is what makes this usable on touch,
+    // where there is no hover at all.
+    hit.addEventListener('click', e => {
+        if (pinned) { pinned = false; hide(); }
+        else { pinned = true; show(e.clientX); }
+    });
 }
