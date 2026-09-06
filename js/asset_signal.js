@@ -84,9 +84,14 @@ const ASSET_SIGNAL_FACTORS = [
 
 const ASSET_SIGNAL_TOTAL = ASSET_SIGNAL_FACTORS.reduce((s, f) => s + f.weight, 0);
 
+// Band edges. ACCUMULATE sits at 65 rather than 70: because mNAV caps at 55 of
+// 100 points and the other two factors are usually weak precisely when a
+// discount exists, a 70 cutoff demanded roughly a 50% discount before the
+// model would call anything cheap. A 30-40% discount to hard assets reading
+// merely "fairly priced" was too conservative to be useful.
 function assetSignalBands(score) {
     if (score === null) return { label: 'No call', signal: 'hold' };
-    if (score >= 70) return { label: 'Cheap vs its Bitcoin', signal: 'accumulate' };
+    if (score >= 65) return { label: 'Cheap vs its Bitcoin', signal: 'accumulate' };
     if (score >= 45) return { label: 'Fairly priced',        signal: 'hold' };
     if (score >= 25) return { label: 'Rich vs its Bitcoin',  signal: 'distribute' };
     return { label: 'Expensive vs its Bitcoin', signal: 'distribute' };
@@ -103,12 +108,14 @@ function computeAssetSignal(ctx) {
     // reflects. Left unadjusted the model punishes one event three times, so a
     // company trading at a fifth of its Bitcoin could still read HOLD.
     //
-    // Below 0.7x mNAV the two consequence factors are progressively pulled
-    // toward neutral (50). At 0.3x they are almost entirely damped, letting
-    // the discount speak for itself; above 0.7x nothing changes.
+    // Damping engages from 1.0x — ANY discount means the market has already
+    // marked the equity down for these problems, so counting them again is
+    // double-counting. The earlier 0.7x threshold was arbitrary and left a
+    // 38% discount reading HOLD: at 0.62x it was only 20% engaged. It now
+    // ramps from 1.0x to 0.4x, by which point the discount speaks alone.
     const m = ctx.mnav;
-    const damp = (m !== null && m !== undefined && m < 0.7)
-        ? clamp((0.7 - m) / 0.4, 0, 1)
+    const damp = (m !== null && m !== undefined && m < 1.0)
+        ? clamp((1.0 - m) / 0.6, 0, 1)
         : 0;
 
     let sum = 0, avail = 0;
@@ -126,12 +133,22 @@ function computeAssetSignal(ctx) {
     const mnavAvailable = factors.find(f => f.key === 'mnav')?.score !== null;
     const reliable = composite !== null && confidence >= ASSET_MIN_WEIGHT && mnavAvailable;
 
-    return { composite, confidence, factors, reliable, mnavAvailable };
+    // Hard gate: "cheap vs its Bitcoin" must mean an actual discount. Without
+    // this a company at or above 1.0x could reach the ACCUMULATE band on the
+    // strength of the minor factors alone — which would be calling something
+    // cheap while you pay more than the coins are worth.
+    const atDiscount = m !== null && m !== undefined && m < 0.95;
+
+    return { composite, confidence, factors, reliable, mnavAvailable, atDiscount };
 }
 
 function renderAssetSignal(ctx) {
     const r = computeAssetSignal(ctx);
-    const band = assetSignalBands(r.reliable ? r.composite : null);
+    let band = assetSignalBands(r.reliable ? r.composite : null);
+    // Cap at HOLD when there is no discount, however well the rest scores.
+    if (band.signal === 'accumulate' && !r.atDiscount) {
+        band = { label: 'Fairly priced — no discount to its Bitcoin', signal: 'hold' };
+    }
     const cls = r.reliable ? signalClass(band.signal) : 'sig-degraded';
     const pct = r.composite === null ? 0 : r.composite / 100;
     const circ = 2 * Math.PI * 52;
