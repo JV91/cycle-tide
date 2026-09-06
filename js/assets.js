@@ -307,6 +307,14 @@ function renderAssetView(key) {
             ${metricInfoHtml('btcPerShare')}` : `<p class="asset-empty">Share count unavailable — mNAV cannot be computed.</p>`}
         </section>` : ''}
 
+        ${nav ? renderAssetProjection(key, {
+            holdings: t.btcHoldings,
+            shares: nav.shares,
+            btcPrice,
+            mnav: nav.mnav,
+            price: last.close,
+        }) : ''}
+
         <section class="card">
             <h2 class="card-title">PERFORMANCE VS BITCOIN</h2>
             <div class="table-wrap">
@@ -347,6 +355,7 @@ function renderAssetView(key) {
 
     renderAssetChart(key);
     bindMetricToggles();
+    bindDilutionInput();
 }
 
 // Indexed comparison chart: both series rebased to 100 so they share one axis.

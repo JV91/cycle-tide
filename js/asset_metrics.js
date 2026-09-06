@@ -22,6 +22,20 @@ const ASSET_METRIC_INFO = {
         source: 'Computed from mNAV, CoinGecko cost basis, and performance vs BTC.',
     },
 
+    backingPerShare: {
+        label: 'this projection',
+        tracks: 'Two independent estimates of where the shares could go. The BACKING columns are arithmetic: BTC held x BTC price / shares, under the Bitcoin scenarios set on the Bitcoin tab and a dilution rate you control. The BETA column is empirical: how much this stock has actually amplified Bitcoin moves during its treasury era.',
+        why: 'A direct share-price forecast would need three guesses stacked on the Bitcoin band — future mNAV, dilution and holdings — and mNAV alone swings the answer about 2.9x. Splitting it apart keeps the knowable part (the arithmetic) separate from the unknowable part (what multiple the market grants), instead of hiding both inside one confident-looking line.',
+        scale: [
+            ['backing per share', 'intrinsic floor — what the coins are worth', 'good'],
+            ['after dilution', 'the same, spread over more shares', 'warn'],
+            ['beta-implied', 'observed amplification, contains past mNAV swings', 'warn'],
+        ],
+        interacts: 'The gap between the backing columns and the beta column is informative: beta embeds historical dilution and premium changes, the arithmetic embeds neither. If beta-implied sits far above backing, the market has historically paid a premium that may not persist. Read alongside mNAV to see what premium is being paid today.',
+        caveat: 'Neither estimate is a forecast. Dilution dominates: MSTR has issued shares at roughly 40%/yr, and at that rate a near-3x rise in Bitcoin barely moves the backing per share. Beta is measured over a short and unusual window (Strive’s is only ~250 days at correlation 0.55), assumes the relationship holds, and ignores that these companies can change strategy, raise debt or be forced to sell.',
+        source: 'Backing from CoinGecko holdings and SEC share counts; beta from daily log returns vs Binance BTC.',
+    },
+
     mnav: {
         label: 'mNAV',
         tracks: 'What the stock market charges you for the Bitcoin the company already owns. 1.0x means the company is valued at exactly its Bitcoin; 0.8x means you buy $1 of BTC exposure for 80 cents; 1.5x means you pay $1.50 for it.',

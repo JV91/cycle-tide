@@ -56,6 +56,22 @@ cannot be percentile-ranked against each company's own history the way the
 Bitcoin signals are. If mNAV is unavailable the read shows NO CALL rather
 than scoring on the minor factors alone.
 
+Each treasury tab also projects **Bitcoin backing per share** — deliberately
+not a share-price forecast. A price projection would stack three guesses on
+the Bitcoin band (future mNAV, dilution, holdings), and mNAV alone swings the
+answer ~2.9x. Instead it separates the knowable from the unknowable:
+
+- **Backing per share** = BTC held x BTC price / shares. Pure arithmetic.
+- **After dilution** at a rate you set. MSTR has issued ~40%/yr; at that rate
+  a near-3x rise in Bitcoin barely moves the backing per share.
+- **Beta-implied**, a second independent estimate from how the stock has
+  actually amplified Bitcoin moves (MSTR beta 1.27, corr 0.74; ASST 1.69,
+  corr 0.55 over only ~250 days).
+
+The two estimates disagree by design — beta contains past dilution and premium
+swings, the arithmetic contains neither. The gap is the market's changing
+willingness to pay a premium, not an error in either.
+
 Every metric carries the same expandable explainer as the BTC signals — what
 it tracks, why it matters, how to read it, **how it works with the other
 metrics**, and its caveat. That interaction field is the important one here:
