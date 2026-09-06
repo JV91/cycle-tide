@@ -1246,3 +1246,13 @@ body {
     height: 0;
     opacity: 0.7;
 }
+
+.dilution-maths {
+    background: var(--warning-bg);
+    border-left: 2px solid var(--warning);
+    padding: 10px 12px;
+    border-radius: 6px;
+    color: var(--text-secondary) !important;
+    margin-top: 14px !important;
+}
+.dilution-maths strong { color: var(--text-primary); }

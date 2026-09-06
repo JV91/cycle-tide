@@ -534,14 +534,17 @@ function renderAssetChart(key, projCtx) {
             pivot && start === pivot ? ` · from ${meta.label} treasury pivot` : ''}</span>`;
     svg.parentElement.parentElement.insertBefore(legend, svg.parentElement);
 
-    attachAssetHover(svg, { key, ai, bi, a, b, x, y, tMin, tMax, h });
+    attachAssetHover(svg, { key, ai, bi, a, b, x, y, tMin, tMax, h, projPts, equityBase });
 }
 
 // Crosshair + tooltip for the indexed comparison chart. Shows BOTH series at
 // the hovered date — the whole point of the chart is the relationship between
 // them, so reading one without the other would be half the story.
 function attachAssetHover(svg, ctx) {
-    const { key, ai, bi, a, b, x, y, tMin, tMax, h } = ctx;
+    const { key, ai, bi, a, b, x, y, tMin, tMax, h, projPts = [], equityBase } = ctx;
+    const lastHistTs = a.length ? a[a.length - 1].ts : 0;
+    // Projected paths keyed by class, so the tooltip can read them past today.
+    const projByCls = Object.fromEntries(projPts.map(p => [p.cls, p.pts]));
     const hit = svg.querySelector('#assetHit');
     const cross = svg.querySelector('#assetCrosshair');
     const dotA = svg.querySelector('#assetDotA');
@@ -573,6 +576,44 @@ function attachAssetHover(svg, ctx) {
         const svgX = ((clientX - rect.left) / rect.width) * CHART.w;
         const ts = tMin + ((svgX - CHART.padL) / (CHART.w - CHART.padL - CHART.padR)) * (tMax - tMin);
 
+        const future = ts > lastHistTs;
+
+        if (future && projPts.length) {
+            // Past today, read the projected paths instead of clamping to the
+            // last real bar — which previously made the whole forward region
+            // report today's values.
+            const pick = cls => projByCls[cls] ? nearest(projByCls[cls], ts) : null;
+            const back = pick('chart-line-proj');
+            const beta = pick('chart-line-beta');
+            const bproj = pick('chart-line-btcproj');
+            const at = back || beta || bproj;
+            if (!at) return;
+
+            cross.style.display = '';
+            cross.setAttribute('x1', x(at.ts));
+            cross.setAttribute('x2', x(at.ts));
+
+            if (back) { dotA.style.display=''; dotA.setAttribute('cx', x(back.ts)); dotA.setAttribute('cy', y(back.v)); }
+            else dotA.style.display='none';
+            if (bproj) { dotB.style.display=''; dotB.setAttribute('cx', x(bproj.ts)); dotB.setAttribute('cy', y(bproj.v)); }
+            else dotB.style.display='none';
+
+            const usd = p => equityBase ? fmtEq((p.v / 100) * equityBase) : '';
+            tip.style.display = 'block';
+            tip.innerHTML = `
+                <div class="tt-date">${new Date(at.ts).toISOString().slice(0, 10)}
+                    <span class="tt-proj">projected</span></div>
+                ${back ? `<div class="tt-row"><span class="tt-key tt-key-a">backing</span>
+                    <span class="tt-idx">${back.v.toFixed(1)}</span>
+                    <span class="tt-raw">${usd(back)}</span></div>` : ''}
+                ${beta ? `<div class="tt-row"><span class="tt-key tt-key-a">beta</span>
+                    <span class="tt-idx">${beta.v.toFixed(1)}</span>
+                    <span class="tt-raw">${usd(beta)}</span></div>` : ''}
+                ${bproj ? `<div class="tt-row"><span class="tt-key tt-key-b">BTC</span>
+                    <span class="tt-idx">${bproj.v.toFixed(1)}</span></div>` : ''}
+                <div class="tt-rel">scenario, not a forecast</div>`;
+        } else {
+
         const na = nearest(ai, ts);
         const nb = nearest(bi, ts);
 
@@ -603,6 +644,7 @@ function attachAssetHover(svg, ctx) {
                 <span class="tt-raw">${rawB !== null ? fmtUSD(rawB) : ''}</span></div>
             <div class="tt-rel ${rel >= 0 ? 'val-up' : 'val-down'}">
                 ${rel >= 0 ? '+' : ''}${rel.toFixed(1)} pts vs BTC since start</div>`;
+        }
 
         // Sit ABOVE the plot area rather than tracking the curve. Anchoring to
         // the higher series still overlapped it wherever both lines ran near
@@ -618,7 +660,9 @@ function attachAssetHover(svg, ctx) {
 
         // Put the tooltip on the emptier side of the crosshair so it does not
         // cover the section of chart being inspected.
-        const xPct = (x(na.ts) / CHART.w) * 100;
+        // Read the crosshair we just placed, so this works for both the
+        // historical and projected branches without depending on either's locals.
+        const xPct = (parseFloat(cross.getAttribute('x1')) / CHART.w) * 100;
         const wPct = (tip.offsetWidth / rect.width) * 100;
         const left = xPct > 50 ? xPct - wPct - 2 : xPct + 2;
         tip.style.transform = 'none';

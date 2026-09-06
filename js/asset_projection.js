@@ -224,6 +224,21 @@ function renderAssetProjection(key, ctx) {
             </label>
             <button id="resetDilution" class="refresh-btn">Reset</button>
         </div>
+        ${(() => {
+            const top = p.rows[p.rows.length - 1];
+            if (!top || !top.years || !top.backingNoDilution || !top.backing) return '';
+            const shareMul = Math.pow(1 + p.dilutionPct / 100, top.years);
+            const btcMul = ctx.btcPrice ? top.btc / ctx.btcPrice : null;
+            const netMul = top.backing / (p.rows[0].backingNoDilution || 1);
+            return `<p class="asset-note dilution-maths">
+                <strong>Why the projected line is not higher:</strong> Bitcoin rising
+                ${btcMul ? btcMul.toFixed(2) + 'x' : '—'} lifts the backing per share by the
+                same multiple, but at ${p.dilutionPct}%/yr the share count grows
+                ${shareMul.toFixed(2)}x over ${top.years.toFixed(1)} years. Net effect on
+                what one share represents: <strong>${netMul.toFixed(2)}x</strong>. Dilution
+                is doing more work here than the Bitcoin price.
+            </p>`;
+        })()}
         <p class="asset-note">
             Default for ${escapeHtml(key)}: ${escapeHtml(def?.basis || '')}.
             Dilution is the factor that decides these outcomes — at 40%/yr a
