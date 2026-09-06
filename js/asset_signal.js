@@ -24,10 +24,14 @@ const ASSET_SIGNAL_FACTORS = [
         score(ctx) {
             const m = ctx.mnav;
             if (m === null || m === undefined) return null;
-            if (m <= 0.7) return 100;
             if (m >= 2.0) return 0;
-            // Linear between: 0.7x -> 100, 1.0x -> 70, 1.5x -> 25, 2.0x -> 0
-            if (m <= 1.0) return 70 + (1.0 - m) / 0.3 * 30;
+            // Anchors: 0.3x -> 100, 0.7x -> 88, 1.0x -> 70, 1.5x -> 25, 2.0x -> 0.
+            // The curve deliberately keeps climbing below 0.7x instead of
+            // saturating: a 0.20x mNAV and a 0.69x mNAV are very different
+            // propositions and previously scored identically.
+            if (m <= 0.3) return 100;
+            if (m <= 0.7) return 88 + (0.7 - m) / 0.4 * 12;
+            if (m <= 1.0) return 70 + (1.0 - m) / 0.3 * 18;
             if (m <= 1.5) return 25 + (1.5 - m) / 0.5 * 45;
             return (2.0 - m) / 0.5 * 25;
         },
@@ -39,6 +43,7 @@ const ASSET_SIGNAL_FACTORS = [
     {
         key: 'treasuryHealth',
         infoKey: 'factorTreasury',
+        consequence: true,
         label: 'Treasury position vs cost',
         weight: 25,
         // Unrealised P/L on the stack. Deeply underwater means financing
@@ -60,6 +65,7 @@ const ASSET_SIGNAL_FACTORS = [
     {
         key: 'relPerf',
         infoKey: 'factorRelPerf',
+        consequence: true,
         label: 'Delivered vs simply holding BTC',
         weight: 20,
         // Over the longest window available. If the equity has persistently
@@ -91,11 +97,28 @@ function assetSignalBands(score) {
 const ASSET_MIN_WEIGHT = 0.6;
 
 function computeAssetSignal(ctx) {
+    // A price crash makes all three factors fire negative at once — but
+    // "treasury underwater" and "underperformed BTC" are largely CONSEQUENCES
+    // of the price falling, which is the same event the discount already
+    // reflects. Left unadjusted the model punishes one event three times, so a
+    // company trading at a fifth of its Bitcoin could still read HOLD.
+    //
+    // Below 0.7x mNAV the two consequence factors are progressively pulled
+    // toward neutral (50). At 0.3x they are almost entirely damped, letting
+    // the discount speak for itself; above 0.7x nothing changes.
+    const m = ctx.mnav;
+    const damp = (m !== null && m !== undefined && m < 0.7)
+        ? clamp((0.7 - m) / 0.4, 0, 1)
+        : 0;
+
     let sum = 0, avail = 0;
     const factors = ASSET_SIGNAL_FACTORS.map(f => {
-        const sc = f.score(ctx);
+        let sc = f.score(ctx);
+        if (sc !== null && f.consequence && damp > 0) {
+            sc = sc + (50 - sc) * damp;
+        }
         if (sc !== null) { sum += sc * f.weight; avail += f.weight; }
-        return { ...f, score: sc, detailText: f.detail(ctx) };
+        return { ...f, score: sc, detailText: f.detail(ctx), damped: f.consequence && damp > 0 };
     });
 
     const confidence = avail / ASSET_SIGNAL_TOTAL;
@@ -153,7 +176,8 @@ function renderAssetSignal(ctx) {
                         <div class="breakdown-bar-fill ${f.score === null ? '' : barClass(f.score)}"
                              style="width:${w}%"></div>
                     </div>
-                    <div class="breakdown-detail">${escapeHtml(f.detailText)}</div>
+                    <div class="breakdown-detail">${escapeHtml(f.detailText)}${
+                        f.damped ? ' <span class="damped-note">· damped: deep discount already reflects this</span>' : ''}</div>
                     ${f.infoKey ? metricInfoHtml(f.infoKey) : ''}
                 </div>`;
             }).join('')}

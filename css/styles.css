@@ -1131,3 +1131,5 @@ body {
     border-radius: 6px;
     color: var(--text-secondary) !important;
 }
+
+.damped-note { color: var(--warning); font-size: 11px; }
