@@ -9,8 +9,16 @@
 
 const ASSET_TABS = [
     { key: 'BTC',  label: 'Bitcoin',  ticker: null },
+    // MSTR announced its BTC treasury strategy on 2020-08-11, before this
+    // price history begins, so its whole series is "as a treasury company".
     { key: 'MSTR', label: 'Strategy', ticker: 'MSTR' },
-    { key: 'ASST', label: 'Strive',   ticker: 'ASST' },
+    // ASST was Asset Entities — an unrelated business — until the Strive
+    // merger completed on 2025-09-10 (SEC lists the former name as ending
+    // that day). Charting from before then compares BTC against a company
+    // that had nothing to do with Bitcoin, so the series starts at the pivot.
+    { key: 'ASST', label: 'Strive',   ticker: 'ASST',
+      treasurySince: '2025-09-10',
+      priorName: 'Asset Entities' },
 ];
 
 let activeTab = (() => {
@@ -42,6 +50,17 @@ function sharesAsOf(companyKey, ts) {
         if (row.ts <= ts) out = row; else break;
     }
     return out;
+}
+
+// Price history from the treasury pivot onward. Everything the dashboard
+// reports about a treasury company — ATH, drawdown, relative performance —
+// should describe the treasury company, not whatever the shell was before it.
+function treasuryEra(key) {
+    const px = EQUITY[key] || [];
+    const meta = ASSET_TABS.find(t => t.key === key);
+    if (!meta?.treasurySince) return px;
+    const pivot = Date.parse(meta.treasurySince + 'T00:00:00Z');
+    return px.filter(p => p.ts >= pivot);
 }
 
 function pctChange(series, days) {
@@ -178,10 +197,12 @@ function renderAssetView(key) {
         return;
     }
 
+    const era = treasuryEra(key);          // treasury-era slice
     const last = px[px.length - 1];
     const prev = px.length > 1 ? px[px.length - 2].close : null;
     const dayChg = prev ? (last.close - prev) / prev : null;
-    const { dd, ath, athTs } = drawdownFromAth(px);
+    // ATH/drawdown measured over the treasury era only.
+    const { dd, ath, athTs } = drawdownFromAth(era);
 
     const btc = SERIES?.daily;
     const btcPrice = btc?.length ? btc[btc.length - 1].close : null;
@@ -189,11 +210,13 @@ function renderAssetView(key) {
 
     // Performance vs BTC over matched windows.
     const windows = [[30, '1M'], [90, '3M'], [365, '1Y']];
-    const perf = windows.map(([d, lbl]) => ({
-        lbl,
-        asset: pctChange(px, d),
-        btc: pctChange(btc, d),
-    }));
+    // Only offer windows that fit inside the treasury era — a "1Y" number
+    // that reaches back into the predecessor company would be meaningless.
+    const eraDays = era.length
+        ? Math.round((era[era.length - 1].ts - era[0].ts) / 86400000) : 0;
+    const perf = windows
+        .filter(([d]) => d <= eraDays)
+        .map(([d, lbl]) => ({ lbl, asset: pctChange(era, d), btc: pctChange(btc, d) }));
 
     el.innerHTML = `
         <section class="card asset-header-card">
@@ -211,6 +234,12 @@ function renderAssetView(key) {
                 <div class="stat-row"><dt>Days since ATH</dt>
                     <dd>${athTs ? daysBetween(last.ts, athTs) : '—'}</dd></div>
             </dl>
+            ${meta.treasurySince ? `<p class="asset-note">
+                Figures cover the treasury era only — from ${meta.treasurySince},
+                when the ${meta.priorName} merger completed and the company became
+                ${meta.label}. Earlier price history belongs to a different
+                business and is excluded rather than blended in.
+            </p>` : ''}
         </section>
 
         ${t?.btcHoldings ? `
@@ -310,8 +339,13 @@ function renderAssetChart(key) {
     const btc = SERIES?.daily || [];
     if (!px?.length) return;
 
-    // Common window: from the later of the two start dates.
-    const start = Math.max(px[0].ts, btc.length ? btc[0].ts : px[0].ts);
+    // Common window: the later of the two series' starts, and — where the
+    // company only became a BTC treasury partway through its listed life —
+    // no earlier than that pivot. Indexing from before the pivot would
+    // compare Bitcoin against an unrelated former business.
+    const meta = ASSET_TABS.find(t => t.key === key);
+    const pivot = meta?.treasurySince ? Date.parse(meta.treasurySince + 'T00:00:00Z') : 0;
+    const start = Math.max(px[0].ts, btc.length ? btc[0].ts : px[0].ts, pivot);
     const a = px.filter(p => p.ts >= start);
     const b = btc.filter(p => p.ts >= start);
     if (a.length < 2 || b.length < 2) return;
@@ -367,6 +401,7 @@ function renderAssetChart(key) {
     legend.innerHTML = `
         <span class="lg-item"><span class="lg-swatch lg-real"></span>${key}</span>
         <span class="lg-item"><span class="lg-swatch lg-price"></span>BTC</span>
-        <span class="lg-item lg-hint">log scale · both = 100 at ${new Date(start).toISOString().slice(0, 10)}</span>`;
+        <span class="lg-item lg-hint">log scale · both = 100 at ${new Date(start).toISOString().slice(0, 10)}${
+            pivot && start === pivot ? ` · from ${meta.label} treasury pivot` : ''}</span>`;
     svg.parentElement.parentElement.insertBefore(legend, svg.parentElement);
 }
