@@ -73,6 +73,28 @@ async function fetchHoldings() {
     return JSON.parse(r.body).companies || [];
 }
 
+// ── BTC holdings history (quarterly, from SEC XBRL) ─────────────────────────
+// us-gaap:CryptoAssetNumberOfUnits is the tagged coin count. Only some filers
+// tag it — Strive reports fair value but never a unit count, so its holdings
+// history simply does not exist in XBRL and the caller must cope with [].
+async function fetchHoldingsHistory(cik) {
+    const url = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}`
+              + '/us-gaap/CryptoAssetNumberOfUnits.json';
+    const r = await get(url, { 'User-Agent': SEC_UA });
+    if (r.status !== 200) return [];
+    const j = JSON.parse(r.body);
+    const rows = j.units?.Bitcoin || [];
+    // One row per period end, keeping the most recently filed restatement.
+    const byEnd = new Map();
+    for (const x of rows) {
+        const prev = byEnd.get(x.end);
+        if (!prev || x.filed > prev.filed) byEnd.set(x.end, x);
+    }
+    return [...byEnd.values()]
+        .sort((a, b) => a.end.localeCompare(b.end))
+        .map(x => ({ end: x.end, ts: Date.parse(x.end + 'T00:00:00Z'), btc: x.val, form: x.form }));
+}
+
 // ── Diluted shares outstanding (quarterly) ──────────────────────────────────
 async function fetchShares(cik) {
     const url = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}`
@@ -119,6 +141,13 @@ for (const c of COMPANIES) {
     }
 
     await sleep(1200);
+    const holdingsHistory = await fetchHoldingsHistory(c.cik);
+    console.log(`  holdings history: ${holdingsHistory.length} quarters`
+        + (holdingsHistory.length
+            ? `, ${holdingsHistory[0].end} → ${holdingsHistory[holdingsHistory.length-1].end}`
+            : ' (not tagged in XBRL)'));
+
+    await sleep(1200);
     const shares = await fetchShares(c.cik);
     const last = shares[shares.length - 1];
     console.log(`  shares: ${shares.length} quarters`
@@ -132,6 +161,7 @@ for (const c of COMPANIES) {
         btcCostUsd: hit ? hit.total_entry_value_usd : null,
         pctOfSupply: hit ? hit.percentage_of_total_supply : null,
         sharesHistory: shares,
+        holdingsHistory,
         prices,
     };
 }

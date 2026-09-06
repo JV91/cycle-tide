@@ -203,3 +203,126 @@ function renderAssetSignal(ctx) {
         ${metricInfoHtml('valuationRead')}
     </section>`;
 }
+
+// ── Historical mNAV reference ───────────────────────────────────────────────
+// Reconstructed from SEC XBRL: BTC holdings (us-gaap:CryptoAssetNumberOfUnits)
+// x BTC price at that quarter end, against market cap from the share count
+// filed at the time.
+//
+// Deliberately presented as a RANGE, not a percentile. There are only ~6
+// quarterly observations (annual until 2025), and a percentile rank over six
+// points would be noise dressed as precision. What it can honestly do is show
+// whether today's reading is inside or outside what has actually occurred —
+// which is the check the thresholds otherwise lacked.
+function historicalMnav(companyKey) {
+    const t = TREASURIES?.[companyKey];
+    const hist = t?.holdingsHistory;
+    if (!hist?.length) return null;
+
+    const btcDaily = SERIES?.daily || [];
+    if (!btcDaily.length) return null;
+    const dayKey = ts => new Date(ts).toISOString().slice(0, 10);
+    const btcMap = new Map(btcDaily.map(p => [dayKey(p.ts), p.close]));
+    const pxMap = new Map((t.prices || []).map(p => [dayKey(p.ts), p.close]));
+
+    // Quarter ends fall on weekends/holidays, so walk back for the last trade.
+    const near = (map, iso) => {
+        for (let i = 0; i < 10; i++) {
+            const k = new Date(Date.parse(iso) - i * 86400000).toISOString().slice(0, 10);
+            if (map.has(k)) return map.get(k);
+        }
+        return null;
+    };
+
+    const points = [];
+    for (const h of hist) {
+        const sh = sharesAsOf(companyKey, h.ts);
+        const equityPx = near(pxMap, h.end);
+        const btcPx = near(btcMap, h.end);
+        if (!sh || !equityPx || !btcPx || !h.btc) continue;
+        points.push({
+            end: h.end,
+            mnav: (equityPx * sh.shares) / (h.btc * btcPx),
+            btc: h.btc,
+            shares: sh.shares,
+        });
+    }
+    if (points.length < 2) return null;
+
+    const vals = points.map(p => p.mnav);
+    return {
+        points,
+        min: Math.min(...vals),
+        max: Math.max(...vals),
+        median: [...vals].sort((a, b) => a - b)[Math.floor(vals.length / 2)],
+    };
+}
+
+function renderMnavHistory(companyKey, currentMnav) {
+    const h = historicalMnav(companyKey);
+    if (!h) {
+        // Say why rather than omitting the card silently — the absence is
+        // itself informative about what the model can and cannot check.
+        return `
+        <section class="card">
+            <h2 class="card-title">HISTORICAL mNAV RANGE</h2>
+            <p class="asset-empty">
+                This company does not tag its Bitcoin holdings in SEC XBRL
+                (us-gaap:CryptoAssetNumberOfUnits), so no historical mNAV can be
+                reconstructed — the thresholds cannot be checked against its own past.
+            </p>
+        </section>`;
+    }
+
+    // Position of today's reading on the observed range.
+    const span = h.max - h.min;
+    const pos = currentMnav !== null && span > 0
+        ? clamp((currentMnav - h.min) / span, 0, 1) : null;
+    const outside = currentMnav !== null && (currentMnav < h.min || currentMnav > h.max);
+
+    return `
+    <section class="card mnav-hist-card">
+        <h2 class="card-title">HISTORICAL mNAV RANGE</h2>
+        <div class="mnav-range">
+            <div class="mnav-range-track">
+                <div class="mnav-range-band"></div>
+                ${pos !== null ? `<div class="mnav-range-marker" style="left:${pos * 100}%"></div>` : ''}
+            </div>
+            <div class="mnav-range-labels">
+                <span>${h.min.toFixed(2)}× low</span>
+                <span class="mnav-range-mid">median ${h.median.toFixed(2)}×</span>
+                <span>${h.max.toFixed(2)}× high</span>
+            </div>
+        </div>
+        <p class="asset-note">
+            ${currentMnav !== null ? `Today: <strong>${currentMnav.toFixed(2)}×</strong> — ${
+                outside
+                    ? (currentMnav < h.min
+                        ? 'below anything observed in this series.'
+                        : 'above anything observed in this series.')
+                    : 'within the observed range.'}` : ''}
+        </p>
+        <div class="table-wrap">
+            <table class="backtest-table">
+                <thead><tr><th>Quarter end</th><th>BTC held</th><th>Diluted shares</th><th>mNAV</th></tr></thead>
+                <tbody>
+                    ${h.points.map(p => `
+                        <tr>
+                            <td>${escapeHtml(p.end)}</td>
+                            <td>${Math.round(p.btc).toLocaleString('en-US')}</td>
+                            <td>${(p.shares / 1e6).toFixed(0)}M</td>
+                            <td class="${p.mnav < 1 ? 'val-up' : 'val-down'}">${p.mnav.toFixed(2)}×</td>
+                        </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+        <p class="asset-note">
+            Reconstructed from SEC XBRL holdings and the share count filed at each
+            quarter end. Only ${h.points.length} observations exist (annual until
+            2025), so this is a <strong>range check, not a percentile</strong> —
+            far too few points to rank against. It exists to show whether the
+            scoring thresholds bracket what has actually occurred.
+        </p>
+        ${metricInfoHtml('mnavHistory')}
+    </section>`;
+}

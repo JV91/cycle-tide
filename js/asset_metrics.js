@@ -22,6 +22,20 @@ const ASSET_METRIC_INFO = {
         source: 'Computed from mNAV, CoinGecko cost basis, and performance vs BTC.',
     },
 
+    mnavHistory: {
+        label: 'this range',
+        tracks: 'Every historical mNAV that can be reconstructed from official filings: SEC-tagged Bitcoin holdings at each quarter end, valued at the BTC price that day, against market cap from the share count filed at the time.',
+        why: 'It is the only empirical check available on the valuation thresholds. Every other signal in this dashboard is scored against its own history; mNAV could not be, because no holdings series was available. This supplies one — thin, but real and authoritative.',
+        scale: [
+            ['below the observed low', 'cheaper than anything on record here', 'good'],
+            ['inside the range', 'within what has occurred', 'warn'],
+            ['above the observed high', 'richer than anything on record here', 'bad'],
+        ],
+        interacts: 'Use it to sanity-check the valuation read rather than to override it. If today sits near the observed low while the read says ACCUMULATE, the two agree. If they disagree, the minor factors are driving the score and it is worth opening them to see why.',
+        caveat: 'Only about six observations exist, annual until 2025, so this is a RANGE not a distribution — a percentile over six points would be noise dressed as precision. It also only covers this company’s own short history: a range that has never included a crisis says nothing about how low mNAV can go. Companies that do not tag holdings in XBRL (Strive among them) cannot be reconstructed at all.',
+        source: 'SEC XBRL us-gaap:CryptoAssetNumberOfUnits and WeightedAverageNumberOfDilutedSharesOutstanding, with Binance BTC prices.',
+    },
+
     trendStructure: {
         label: 'trend structure',
         tracks: 'A line fitted through successively lower pivot highs (descending resistance) or higher pivot lows (rising support) over a 120-day window, and whether price has broken through it. Pivots are bars unmatched by any bar within 5 days either side; only those continuing the sequence are kept, discarding ones that break it.',

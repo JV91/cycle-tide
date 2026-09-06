@@ -1173,3 +1173,41 @@ body {
     color: var(--text-secondary) !important;
 }
 .trend-warning strong { color: var(--warning); }
+
+/* ── Historical mNAV range ──────────────────────────────────────────── */
+
+.mnav-range { margin: 4px 0 14px; }
+
+.mnav-range-track {
+    position: relative;
+    height: 30px;
+    display: flex;
+    align-items: center;
+}
+.mnav-range-band {
+    position: absolute;
+    inset: 12px 0 12px 0;
+    background: linear-gradient(90deg, var(--good-bg), var(--warning-bg), var(--critical-bg));
+    border-radius: 3px;
+}
+.mnav-range-marker {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    width: 3px;
+    background: var(--text-primary);
+    border-radius: 2px;
+    transform: translateX(-50%);
+}
+
+.mnav-range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.mnav-range-mid { color: var(--text-secondary); }
+
+.mnav-hist-card .asset-note strong { color: var(--text-primary); }

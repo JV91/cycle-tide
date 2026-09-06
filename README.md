@@ -79,6 +79,15 @@ mNAV, BTC per share and cost basis only mean something in combination. A
 premium lets a company issue shares accretively; at a discount the same
 issuance destroys BTC per share and the flywheel stops turning.
 
+Where a company tags its Bitcoin holdings in SEC XBRL
+(`us-gaap:CryptoAssetNumberOfUnits`), a **historical mNAV range** is
+reconstructed from official filings — holdings x BTC price at each quarter end
+against the share count filed at the time. For MSTR that gives six observations
+spanning 0.60x–1.33x, which is enough to check that the scoring thresholds
+bracket what has actually occurred. It is deliberately shown as a range, not a
+percentile: six points is far too few to rank against. Strive does not tag
+holdings at all, so its card says so rather than showing nothing.
+
 mNAV uses diluted share counts from SEC EDGAR, which are quarterly. These
 companies issue stock frequently to buy Bitcoin, so the figure lags recent
 issuance and is indicative rather than exact between filings.

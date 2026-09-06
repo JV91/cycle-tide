@@ -330,6 +330,8 @@ function renderAssetView(key) {
             ${metricInfoHtml('btcPerShare')}` : `<p class="asset-empty">Share count unavailable — mNAV cannot be computed.</p>`}
         </section>` : ''}
 
+        ${renderMnavHistory(key, nav ? nav.mnav : null)}
+
         ${nav ? renderAssetProjection(key, {
             holdings: t.btcHoldings,
             shares: nav.shares,
