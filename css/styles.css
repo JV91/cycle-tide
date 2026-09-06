@@ -1123,3 +1123,11 @@ body {
 
 .asset-dilution { margin-top: 16px; }
 .asset-dilution input { width: 84px; }
+
+.asof-note {
+    background: var(--warning-bg);
+    border-left: 2px solid var(--warning);
+    padding: 9px 12px;
+    border-radius: 6px;
+    color: var(--text-secondary) !important;
+}

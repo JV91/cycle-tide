@@ -151,6 +151,13 @@ function isToday(ts) {
 
 function renderFor(ts) {
     viewTs = ts;
+    // On an equity tab the date browser drives that view instead; re-render it
+    // and skip the BTC-only DOM below, which does not exist there.
+    if (typeof activeTab !== 'undefined' && activeTab !== 'BTC') {
+        renderDateControls(contextAsOf(ts).actualTs);
+        renderAssetView(activeTab);
+        return;
+    }
     const values = valuesAsOf(ts);
     const ctx = contextAsOf(ts);
     const scored = computeComposite(values);

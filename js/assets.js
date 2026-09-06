@@ -56,11 +56,22 @@ function sharesAsOf(companyKey, ts) {
 // reports about a treasury company — ATH, drawdown, relative performance —
 // should describe the treasury company, not whatever the shell was before it.
 function treasuryEra(key) {
-    const px = EQUITY[key] || [];
+    const px = asOfEquity(EQUITY[key] || []);
     const meta = ASSET_TABS.find(t => t.key === key);
     if (!meta?.treasurySince) return px;
     const pivot = Date.parse(meta.treasurySince + 'T00:00:00Z');
     return px.filter(p => p.ts >= pivot);
+}
+
+// Everything on an equity tab is computed as of the date selected in the date
+// browser, not always "today" — otherwise stepping back in time would leave
+// the valuation read showing current numbers, which is worse than not
+// offering the control at all.
+function asOfEquity(series) {
+    if (!series?.length) return series || [];
+    if (viewTs === null) return series;
+    const cut = series.filter(p => p.ts <= viewTs);
+    return cut.length ? cut : series.slice(0, 1);
 }
 
 function pctChange(series, days) {
@@ -86,13 +97,13 @@ function drawdownFromAth(series) {
 
 // mNAV: market cap ÷ value of BTC held. Below 1.0 means the market values the
 // company at less than its Bitcoin alone — the headline number for these.
-function computeMnav(companyKey, btcPrice) {
+function computeMnav(companyKey, btcPrice, asOfTs) {
     const t = TREASURIES?.[companyKey];
-    const px = EQUITY[companyKey];
+    const px = asOfEquity(EQUITY[companyKey]);
     if (!t?.btcHoldings || !px?.length || !btcPrice) return null;
 
     const last = px[px.length - 1];
-    const sh = sharesAsOf(companyKey, last.ts);
+    const sh = sharesAsOf(companyKey, asOfTs ?? last.ts);
     if (!sh) return null;
 
     const marketCap = last.close * sh.shares;
@@ -131,8 +142,9 @@ function switchTab(key) {
     document.getElementById('assetView').hidden = key === 'BTC';
     // The date browser drives the BTC model only — hide it elsewhere rather
     // than leaving a control that silently does nothing.
+    // The date browser now drives the equity tabs too, so it stays visible.
     const db = document.querySelector('.date-browser');
-    if (db) db.hidden = key !== 'BTC';
+    if (db) db.hidden = false;
     // The live ticker streams BTC only — showing an empty one on an equity tab
     // reads as broken rather than as "not applicable".
     const tick = document.querySelector('.status-row');
@@ -197,16 +209,20 @@ function renderAssetView(key) {
         return;
     }
 
-    const era = treasuryEra(key);          // treasury-era slice
-    const last = px[px.length - 1];
-    const prev = px.length > 1 ? px[px.length - 2].close : null;
+    const era = treasuryEra(key);          // treasury-era slice, as of viewTs
+    const pxAsOf = asOfEquity(px);
+    const last = pxAsOf[pxAsOf.length - 1];
+    const prev = pxAsOf.length > 1 ? pxAsOf[pxAsOf.length - 2].close : null;
     const dayChg = prev ? (last.close - prev) / prev : null;
     // ATH/drawdown measured over the treasury era only.
     const { dd, ath, athTs } = drawdownFromAth(era);
 
-    const btc = SERIES?.daily;
-    const btcPrice = btc?.length ? btc[btc.length - 1].close : null;
-    const nav = computeMnav(key, btcPrice);
+    const btcAll = SERIES?.daily || [];
+    const btc = viewTs === null ? btcAll : btcAll.filter(p => p.ts <= viewTs);
+    // Must match the date being viewed: pairing a past share price with today's
+    // BTC price would produce a meaningless mNAV.
+    const btcPrice = btc.length ? btc[btc.length - 1].close : null;
+    const nav = computeMnav(key, btcPrice, last?.ts);
 
     // Performance vs BTC over matched windows.
     const windows = [[30, '1M'], [90, '3M'], [365, '1Y']];
@@ -234,6 +250,12 @@ function renderAssetView(key) {
                 <div class="stat-row"><dt>Days since ATH</dt>
                     <dd>${athTs ? daysBetween(last.ts, athTs) : '—'}</dd></div>
             </dl>
+            ${viewTs !== null && !isToday(viewTs) ? `<p class="asset-note asof-note">
+                Showing ${escapeHtml(new Date(last.ts).toISOString().slice(0, 10))} —
+                every figure on this tab, including the valuation read, is computed
+                as of that date using the share count filed at the time.
+            </p>` : ''}
+            ${metricInfoHtml('priceAndAth')}
             ${metricInfoHtml('drawdown')}
             ${meta.treasurySince ? `<p class="asset-note">
                 Figures cover the treasury era only — from ${meta.treasurySince},
@@ -275,6 +297,7 @@ function renderAssetView(key) {
                 <div class="stat-row"><dt>Avg cost per BTC</dt>
                     <dd>${t.btcCostUsd && t.btcHoldings ? fmtUSD(t.btcCostUsd / t.btcHoldings) : '—'}</dd></div>
             </dl>
+            ${metricInfoHtml('holdings')}
             ${metricInfoHtml('costBasis')}
         </section>
 

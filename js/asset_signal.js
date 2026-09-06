@@ -15,6 +15,7 @@
 const ASSET_SIGNAL_FACTORS = [
     {
         key: 'mnav',
+        infoKey: 'factorMnav',
         label: 'Valuation vs Bitcoin held',
         weight: 55,
         // The dominant factor. Below 1.0x you acquire BTC exposure below the
@@ -37,6 +38,7 @@ const ASSET_SIGNAL_FACTORS = [
     },
     {
         key: 'treasuryHealth',
+        infoKey: 'factorTreasury',
         label: 'Treasury position vs cost',
         weight: 25,
         // Unrealised P/L on the stack. Deeply underwater means financing
@@ -57,6 +59,7 @@ const ASSET_SIGNAL_FACTORS = [
     },
     {
         key: 'relPerf',
+        infoKey: 'factorRelPerf',
         label: 'Delivered vs simply holding BTC',
         weight: 20,
         // Over the longest window available. If the equity has persistently
@@ -151,6 +154,7 @@ function renderAssetSignal(ctx) {
                              style="width:${w}%"></div>
                     </div>
                     <div class="breakdown-detail">${escapeHtml(f.detailText)}</div>
+                    ${f.infoKey ? metricInfoHtml(f.infoKey) : ''}
                 </div>`;
             }).join('')}
         </div>

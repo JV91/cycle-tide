@@ -22,6 +22,77 @@ const ASSET_METRIC_INFO = {
         source: 'Computed from mNAV, CoinGecko cost basis, and performance vs BTC.',
     },
 
+    holdings: {
+        label: 'the treasury',
+        tracks: 'How much Bitcoin the company owns outright, what share of all Bitcoin that represents, what it paid, and what it is worth now.',
+        why: 'This is the asset the whole thesis rests on. Scale matters in both directions: Strategy holds over 4% of all Bitcoin that will ever exist, which makes it a systemically significant holder — and means any forced selling would move the market against itself. A small holder has more room to manoeuvre but less of a moat.',
+        scale: [
+            ['large and in profit', 'strong position, room to absorb drawdowns', 'good'],
+            ['large but near cost', 'scale without cushion', 'warn'],
+            ['underwater', 'financing pressure regardless of size', 'bad'],
+        ],
+        interacts: 'Holdings alone can mislead. Compare against BTC per share: a company can grow its stack impressively while each share represents less Bitcoin than before, because the growth was funded by issuing stock. Total holdings is the company’s story; BTC per share is yours.',
+        caveat: 'A point-in-time figure from CoinGecko, refreshed when the snapshot script runs — recent purchases may not appear. It also says nothing about how the coins were financed: debt-funded and equity-funded stacks of identical size carry very different risk.',
+        source: 'CoinGecko public_treasury.',
+    },
+
+    priceAndAth: {
+        label: 'these figures',
+        tracks: 'Current share price with its daily move, the highest close reached during the treasury era, and how long ago that peak was.',
+        why: 'Days since the all-time high is the quietly useful one — it distinguishes a stock consolidating after a recent peak from one that has been grinding down for years. Combined with drawdown depth, it sketches whether the market is digesting or abandoning the thesis.',
+        scale: [
+            ['near highs, recent ATH', 'momentum intact', 'good'],
+            ['deep drawdown, distant ATH', 'prolonged de-rating', 'bad'],
+        ],
+        interacts: 'Read against Bitcoin’s own drawdown on the Bitcoin tab. If the stock is far below its high while Bitcoin is not, the difference is mNAV compression and dilution rather than Bitcoin — which the valuation read then prices.',
+        caveat: 'For a company that changed business, only the treasury era counts. Strive’s pre-merger highs belong to Asset Entities and are excluded, so this ATH is lower than a naive chart would show.',
+        source: 'Self-computed from daily closes.',
+    },
+
+    // ── The three factors inside the valuation read ───────────────────────
+    factorMnav: {
+        label: 'this factor',
+        tracks: 'mNAV scored against the 1.0x anchor. 0.7x or below scores 100; 1.0x scores 70; 1.5x scores 25; 2.0x or above scores 0.',
+        why: 'It carries 55 of the 100 points because it is the only factor with a genuine fair-value reference. The other two adjust that read; they do not replace it. If mNAV is unavailable the whole read shows NO CALL rather than scoring on the minor factors alone.',
+        scale: [
+            ['0.7x or below', 'deep discount to holdings', 'good'],
+            ['around 1.0x', 'priced at its Bitcoin', 'warn'],
+            ['1.5x', 'substantial premium', 'bad'],
+            ['2.0x or above', 'steep premium', 'bad'],
+        ],
+        interacts: 'Sets the direction the other two factors then modify. Note the asymmetry: a discount is good for a buyer today, but bad for the company’s ability to issue shares accretively — so a very low mNAV is simultaneously an opportunity and a warning about the business model.',
+        caveat: 'The thresholds are reasoned judgements about the economics, not levels fitted to data. No historical holdings series exists, so mNAV cannot be percentile-ranked against this company’s own past.',
+        source: 'Market cap / (BTC held x BTC price).',
+    },
+
+    factorTreasury: {
+        label: 'this factor',
+        tracks: 'Unrealised profit or loss on the Bitcoin stack, scored from -40% (0 points) through breakeven (50) to +100% (100 points).',
+        why: 'It is a solvency and pressure gauge, worth 25 points. A treasury deep in profit can absorb a drawdown; one underwater faces harder conversations with creditors and may be forced to issue equity at bad prices or sell coins — exactly when doing so is most damaging.',
+        scale: [
+            ['+100% or more', 'large buffer', 'good'],
+            ['around breakeven', 'no cushion', 'warn'],
+            ['-40% or worse', 'severe pressure', 'bad'],
+        ],
+        interacts: 'Most informative combined with mNAV. Underwater AND at a discount is the pressured case — the market doubts the wrapper exactly when the balance sheet is weakest. Underwater but at a premium means the market is pricing something other than the coins.',
+        caveat: 'Aggregate average cost hides purchase timing, and this ignores debt entirely — a company underwater with no leverage is in a very different position from one underwater with convertibles maturing.',
+        source: 'CoinGecko entry value vs current value.',
+    },
+
+    factorRelPerf: {
+        label: 'this factor',
+        tracks: 'Total return versus simply holding Bitcoin over the same 3-month window, scored from -50% (0 points) through parity (50) to +50% (100).',
+        why: 'Worth 20 points, it is the reality check on the other two. The entire reason to own one of these instead of Bitcoin is expected outperformance; if the equity persistently lags, the extra risks — dilution, leverage, management, regulation — are not being paid for, no matter how cheap the wrapper looks.',
+        scale: [
+            ['+50% or more vs BTC', 'strongly outperforming', 'good'],
+            ['near parity', 'tracking Bitcoin', 'warn'],
+            ['-50% or worse vs BTC', 'badly lagging', 'bad'],
+        ],
+        interacts: 'A fixed 3-month window is used for both companies so the factor stays comparable across tabs — Strive’s treasury era is too short for a year. Outperformance driven by an expanding premium can unwind; outperformance driven by rising BTC per share is durable. Check which by looking at mNAV.',
+        caveat: 'Three months is short and these stocks are volatile, so this factor is noisy. It is weighted lowest for that reason.',
+        source: 'Self-computed from daily closes vs Binance BTC.',
+    },
+
     backingPerShare: {
         label: 'this projection',
         tracks: 'Two independent estimates of where the shares could go. The BACKING columns are arithmetic: BTC held x BTC price / shares, under the Bitcoin scenarios set on the Bitcoin tab and a dilution rate you control. The BETA column is empirical: how much this stock has actually amplified Bitcoin moves during its treasury era.',
