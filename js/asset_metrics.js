@@ -207,14 +207,14 @@ const ASSET_METRIC_INFO = {
 
     indexedChart: {
         label: 'this chart',
-        tracks: 'Both the stock and Bitcoin rebased to 100 at the start of the window, drawn on one logarithmic axis.',
+        tracks: 'Both the stock and Bitcoin rebased to 100 at the start of the window on one logarithmic axis, plus three dashed forward paths past the vertical divider: Bitcoin under the assumptions set on the Bitcoin tab, the stock’s Bitcoin backing per share after dilution at today’s mNAV, and the beta-implied path.',
         why: 'Indexing puts two very different price levels on a common footing, so their shapes are directly comparable. The log scale means equal vertical distances are equal percentage moves — essential when one series can move many times more than the other.',
         scale: [
             ['stock line above BTC', 'outperforming since the start date', 'good'],
             ['lines together', 'tracking', 'warn'],
             ['stock line below BTC', 'underperforming since the start date', 'bad'],
         ],
-        interacts: 'The visual counterpart to the performance table. Widening gaps usually reflect mNAV re-rating rather than Bitcoin; watch whether a divergence coincides with share issuance.',
+        interacts: 'The visual counterpart to the performance and projection tables. Widening gaps in the historical part usually reflect mNAV re-rating rather than Bitcoin. In the projected part, the gap between the two equity paths IS the uncertainty — they fan apart because beta embeds past dilution and premium while the backing calculation embeds neither, and neither is a forecast.',
         caveat: 'Everything depends on the start date. It is anchored to the treasury pivot where one applies, so the chart shows the treasury company only — but any single start date still flatters or penalises depending on where it lands.',
         source: 'Self-computed; deliberately one axis, never dual-axis.',
     },

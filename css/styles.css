@@ -1212,3 +1212,37 @@ body {
 .mnav-range-mid { color: var(--text-secondary); }
 
 .mnav-hist-card .asset-note strong { color: var(--text-primary); }
+
+/* Projection paths on the asset comparison chart. */
+.chart-line-beta {
+    fill: none;
+    stroke: #7aa2f7;
+    stroke-width: 1.5;
+    stroke-dasharray: 2 4;
+    opacity: 0.8;
+}
+.chart-now-divider {
+    stroke: var(--text-muted);
+    stroke-width: 1;
+    stroke-dasharray: 2 4;
+    opacity: 0.5;
+}
+.lg-beta {
+    background: none;
+    border-top: 2px dotted #7aa2f7;
+    height: 0;
+}
+
+.chart-line-btcproj {
+    fill: none;
+    stroke: #7aa2f7;
+    stroke-width: 1.5;
+    stroke-dasharray: 6 4;
+    opacity: 0.5;
+}
+.lg-btcproj {
+    background: none;
+    border-top: 2px dashed #7aa2f7;
+    height: 0;
+    opacity: 0.7;
+}

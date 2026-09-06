@@ -378,13 +378,15 @@ function renderAssetView(key) {
         </section>
     `;
 
-    renderAssetChart(key);
+    renderAssetChart(key, nav ? {
+        holdings: t.btcHoldings, shares: nav.shares, btcPrice, mnav: nav.mnav, price: last.close,
+    } : null);
     bindMetricToggles();
     bindDilutionInput();
 }
 
 // Indexed comparison chart: both series rebased to 100 so they share one axis.
-function renderAssetChart(key) {
+function renderAssetChart(key, projCtx) {
     const svg = document.getElementById('assetChart');
     if (!svg) return;
     syncChartGeometry();
@@ -412,8 +414,57 @@ function renderAssetChart(key) {
     };
     const ai = idx(a), bi = idx(b);
 
-    const tMin = start, tMax = Math.max(ai[ai.length - 1].ts, bi[bi.length - 1].ts);
-    const all = [...ai, ...bi].map(p => p.v);
+    // Forward projections, converted onto the same indexed basis as the lines
+    // so they can share the axis. Two paths are drawn, not one: the arithmetic
+    // (backing per share after dilution) and the empirical (beta-implied)
+    // disagree by a wide margin, and showing only one would hide that.
+    const equityBase = a[0].close;
+    let projPts = [];
+    if (projCtx && typeof assetProjectionScenarios === 'function') {
+        const pr = assetProjectionScenarios(key, projCtx);
+        if (pr) {
+            const nowTs = a[a.length - 1].ts;
+            const nowV = (a[a.length - 1].close / equityBase) * 100;
+            const mk = (field, mnavMul) => {
+                const pts = [{ ts: nowTs, v: nowV }];
+                for (const r of pr.rows) {
+                    if (!r.years || r.years <= 0) continue;
+                    const usd = field === 'beta' ? r.betaImplied
+                              : (r.backing !== null && mnavMul ? r.backing * mnavMul : null);
+                    if (usd === null || usd === undefined) continue;
+                    pts.push({ ts: nowTs + r.years * 365.25 * 86400000, v: (usd / equityBase) * 100 });
+                }
+                return pts.length > 1 ? pts : [];
+            };
+            // BTC's own projected path over the same window, so the equity
+            // forecast can be read against the Bitcoin assumption driving it
+            // rather than in isolation.
+            const btcBase = b[0].close;
+            const btcNowV = (b[b.length - 1].close / btcBase) * 100;
+            const btcProj = [{ ts: b[b.length - 1].ts, v: btcNowV }];
+            for (const r of pr.rows) {
+                if (!r.years || r.years <= 0) continue;
+                btcProj.push({ ts: nowTs + r.years * 365.25 * 86400000,
+                               v: (r.btc / btcBase) * 100 });
+            }
+
+            projPts = [
+                { cls: 'chart-line-btcproj', pts: btcProj.length > 1 ? btcProj : [],
+                  label: 'BTC projected' },
+                { cls: 'chart-line-proj', pts: mk('backing', projCtx.mnav),
+                  label: 'backing after dilution, at today’s mNAV' },
+                { cls: 'chart-line-beta', pts: mk('beta', null),
+                  label: 'beta-implied' },
+            ].filter(p => p.pts.length > 1);
+        }
+    }
+
+    const projTs = projPts.flatMap(p => p.pts.map(q => q.ts));
+    const projV  = projPts.flatMap(p => p.pts.map(q => q.v));
+
+    const tMin = start;
+    const tMax = Math.max(ai[ai.length - 1].ts, bi[bi.length - 1].ts, ...(projTs.length ? projTs : [0]));
+    const all = [...ai, ...bi].map(p => p.v).concat(projV);
     const lo = Math.min(...all), hi = Math.max(...all);
     // Log scale: these can diverge by 10x+, which a linear axis would flatten.
     let lLo = Math.log10(Math.max(lo, 1)), lHi = Math.log10(hi);
@@ -454,6 +505,9 @@ function renderAssetChart(key) {
         ${ticks.map(v => `<line x1="${padL}" x2="${w - padR}" y1="${y(v)}" y2="${y(v)}" class="chart-grid"/>
             <text x="${padL - 8}" y="${y(v) + 4}" text-anchor="end" class="chart-axis">${v}</text>`).join('')}
         ${years.join('')}
+        ${projPts.length ? `<line x1="${x(a[a.length-1].ts)}" x2="${x(a[a.length-1].ts)}"
+              y1="${padT}" y2="${h - padB}" class="chart-now-divider"/>` : ''}
+        ${projPts.map(p => `<path d="${path(p.pts.map(q => ({ts:q.ts, v:q.v})))}" class="${p.cls}"/>`).join('')}
         <path d="${path(bi)}" class="chart-line-price"/>
         <path d="${path(ai)}" class="chart-line-real"/>
         <line id="assetCrosshair" x1="0" x2="0" y1="${padT}" y2="${h - padB}"
@@ -473,6 +527,9 @@ function renderAssetChart(key) {
     legend.innerHTML = `
         <span class="lg-item"><span class="lg-swatch lg-real"></span>${key}</span>
         <span class="lg-item"><span class="lg-swatch lg-price"></span>BTC</span>
+        ${projPts.length ? `<span class="lg-item"><span class="lg-swatch lg-btcproj"></span>BTC projected</span>
+        <span class="lg-item"><span class="lg-swatch lg-proj"></span>projected (backing)</span>
+        <span class="lg-item"><span class="lg-swatch lg-beta"></span>projected (beta)</span>` : ''}
         <span class="lg-item lg-hint">log scale · both = 100 at ${new Date(start).toISOString().slice(0, 10)}${
             pivot && start === pivot ? ` · from ${meta.label} treasury pivot` : ''}</span>`;
     svg.parentElement.parentElement.insertBefore(legend, svg.parentElement);
