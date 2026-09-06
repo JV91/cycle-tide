@@ -416,20 +416,26 @@ function renderAssetChart(key) {
     const all = [...ai, ...bi].map(p => p.v);
     const lo = Math.min(...all), hi = Math.max(...all);
     // Log scale: these can diverge by 10x+, which a linear axis would flatten.
-    const lLo = Math.log10(Math.max(lo, 1)), lHi = Math.log10(hi);
+    let lLo = Math.log10(Math.max(lo, 1)), lHi = Math.log10(hi);
 
     const x = ts => padL + ((ts - tMin) / (tMax - tMin)) * (w - padL - padR);
     const y = v => padT + (1 - (Math.log10(Math.max(v, 1)) - lLo) / (lHi - lLo || 1)) * (h - padT - padB);
     const path = pts => pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.ts).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
 
+    // Include the first 1/2/5 step at or above the max so the top of the axis
+    // carries a label — otherwise the span above the last tick reads as an
+    // unexplained empty band.
     const ticks = [];
-    for (let e = Math.floor(lLo); e <= Math.ceil(lHi); e++) {
+    let cap = null;
+    for (let e = Math.floor(lLo); e <= Math.ceil(lHi) + 1; e++) {
         for (const m of [1, 2, 5]) {
             const v = m * Math.pow(10, e);
-            if (v < lo || v > hi) continue;
+            if (v < lo) continue;
+            if (v > hi) { if (cap === null) cap = v; continue; }
             ticks.push(v);
         }
     }
+    if (cap !== null) { ticks.push(cap); lHi = Math.log10(cap); }
 
     const years = [];
     const y0 = new Date(tMin).getUTCFullYear(), y1 = new Date(tMax).getUTCFullYear();
@@ -546,17 +552,20 @@ function attachAssetHover(svg, ctx) {
         // the top of the chart — the tooltip would clamp to 0 and cover the
         // very curve being read. Parking it in the header strip means the plot
         // is never obscured, whatever the data does.
-        // The wrapper carries top padding reserved for exactly this, so the
-        // tooltip sits in that strip and the plot stays fully visible.
+        // Overlay the top of the plot rather than reserving permanent space
+        // below the card title. It is placed on whichever side of the crosshair
+        // has more room, so it never sits over the part of the curve being read.
         const wrapTop = tip.parentElement.getBoundingClientRect().top;
-        const svgTop = rect.top - wrapTop;             // where the plot begins
-        const pxPerUnitY = rect.height / h;
-        const plotTopPx = svgTop + CHART.padT * pxPerUnitY;
-        tip.style.top = `${Math.max(0, plotTopPx - tip.offsetHeight - 8)}px`;
+        const svgTop = rect.top - wrapTop;
+        tip.style.top = `${Math.max(0, svgTop + 6)}px`;
 
-        const leftPct = (x(na.ts) / CHART.w) * 100;
-        const halfPct = (tip.offsetWidth / 2 / rect.width) * 100;
-        tip.style.left = `${Math.min(100 - halfPct, Math.max(halfPct, leftPct)).toFixed(2)}%`;
+        // Put the tooltip on the emptier side of the crosshair so it does not
+        // cover the section of chart being inspected.
+        const xPct = (x(na.ts) / CHART.w) * 100;
+        const wPct = (tip.offsetWidth / rect.width) * 100;
+        const left = xPct > 50 ? xPct - wPct - 2 : xPct + 2;
+        tip.style.transform = 'none';
+        tip.style.left = `${Math.min(100 - wPct - 1, Math.max(1, left)).toFixed(2)}%`;
     }
 
     function hide() {

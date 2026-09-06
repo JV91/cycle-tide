@@ -1025,11 +1025,12 @@ body {
 
 /* Headroom above the asset chart so the hover tooltip has somewhere to sit
    without ever covering the plot. */
-#assetView .chart-wrap { padding-top: 74px; }
+/* No permanent headroom: reserving space for the tooltip left a large empty
+   band above the plot whenever the cursor was elsewhere. The tooltip now
+   overlays the top of the chart instead, and the plot uses the full height. */
+#assetView .chart-wrap { padding-top: 0; }
 
-@media (max-width: 640px) {
-    #assetView .chart-wrap { padding-top: 92px; }
-}
+
 
 /* ── Asset valuation signal ─────────────────────────────────────────── */
 
