@@ -8,14 +8,15 @@
 //   stablecoins.llama.fi — total stablecoin supply (SSR dry-powder proxy)
 //   api.alternative.me  — Crypto Fear & Greed Index
 //   fapi.binance.com    — funding rate, open interest, daily klines (price)
-//   Self-computed from klines — ATH drawdown, 200WMA multiple, monthly RSI
+//   tftc.io (snapshot)  — US spot BTC ETF daily net flows (CC BY 4.0)
+//   Self-computed from klines — ATH drawdown, 200WMA multiple, Pi Cycle, monthly RSI
 
 const SIGNAL_DEFS = [
     {
         key: 'ath_drawdown',
         label: 'Drawdown from ATH',
         category: 'price',
-        weight: 15,
+        weight: 13,
         // Historical bottoms clustered around -75% to -85% from ATH; 0% = new ATH.
         // Score 100 at -80% drawdown, tapering to 0 at a new ATH.
         score(v) {
@@ -40,7 +41,7 @@ const SIGNAL_DEFS = [
         key: 'mvrv_z',
         label: 'MVRV Z-Score',
         category: 'onchain',
-        weight: 15,
+        weight: 12,
         // <0 = historical capitulation (score 100). >7 = historical top (score 0).
         score(v) {
             if (v === null) return null;
@@ -64,7 +65,7 @@ const SIGNAL_DEFS = [
         key: 'nupl',
         label: 'Net Unrealized Profit/Loss',
         category: 'onchain',
-        weight: 12,
+        weight: 8,
         // <0 Capitulation (100) ... >0.75 Euphoria (0)
         score(v) {
             if (v === null) return null;
@@ -169,7 +170,7 @@ const SIGNAL_DEFS = [
         key: 'ssr',
         label: 'Stablecoin Supply Ratio (percentile)',
         category: 'liquidity',
-        weight: 10,
+        weight: 9,
         // v is a 0-1 percentile rank of SSR within trailing 2yr window.
         // Low percentile (low SSR) = lots of dry powder relative to BTC cap = accumulation-favorable.
         score(v) {
@@ -187,6 +188,33 @@ const SIGNAL_DEFS = [
             ],
             caveat: 'Stablecoins are increasingly used for yield and payments outside crypto trading, so not all of this supply is genuinely waiting to buy Bitcoin.',
             source: 'DefiLlama stablecoin supply + self-computed market cap.',
+        },
+    },
+    {
+        key: 'etf_flow',
+        label: 'US Spot ETF Net Flow (30d)',
+        category: 'institutional',
+        weight: 10,
+        // v is a 0-1 percentile rank of the trailing 30-day net flow within
+        // an ~18-month window. Heavy outflows (low percentile) have marked
+        // capitulation; heavy inflows (high percentile) accompany tops.
+        // Contrarian, like Fear & Greed: low percentile scores HIGH.
+        score(v) {
+            if (v === null) return null;
+            return clamp(mapRange(v, 1, 0, 0, 100), 0, 100);
+        },
+        fmt: v => v === null ? '—' : `${Math.round(v * 100)}th pct of trailing 18m`,
+        info: {
+            tracks: 'Net capital flowing into or out of the US spot Bitcoin ETFs, summed over the trailing 30 days and ranked against roughly the last 18 months. Daily flow alone swings between −$1.1bn and +$1.4bn, so the rolling sum is what carries signal.',
+            why: 'Since January 2024 the ETFs have been the dominant marginal buyer of Bitcoin, and unlike on-chain metrics this measures institutional capital directly. Read contrarian: sustained heavy outflows have marked capitulation lows (the July 2026 low registered the 1st percentile, −$6.8bn over 30 days), while peak inflows accompanied the March 2024 and October 2025 highs.',
+            scale: [
+                ['0–25th pct', 'heavy outflows — capitulation', 'good'],
+                ['25–60th pct', 'muted or mixed demand', 'warn'],
+                ['60–85th pct', 'strong institutional bid', 'warn'],
+                ['85–100th pct', 'euphoric inflows — top-adjacent', 'bad'],
+            ],
+            caveat: 'Only ~2.5 years of history exists (the ETFs launched Jan 2024), so this covers a single cycle — there is no prior-cycle precedent to validate it against. Data is a committed snapshot, refreshed by scripts/snapshot-etf.mjs.',
+            source: 'TFTC (tftc.io), CC BY 4.0 — compiled from SoSoValue and Farside Investors.',
         },
     },
     {
@@ -265,11 +293,12 @@ const SIGNAL_DEFS = [
 ];
 
 const CATEGORY_LABELS = {
-    onchain:   'On-Chain Valuation',
-    liquidity: 'Dry Powder / Liquidity',
-    leverage:  'Derivatives & Leverage',
-    sentiment: 'Sentiment',
-    price:     'Price Technicals',
+    onchain:       'On-Chain Valuation',
+    liquidity:     'Dry Powder / Liquidity',
+    leverage:      'Derivatives & Leverage',
+    institutional: 'Institutional Flows',
+    sentiment:     'Sentiment',
+    price:         'Price Technicals',
 };
 
 const TOTAL_WEIGHT = SIGNAL_DEFS.reduce((s, d) => s + d.weight, 0);

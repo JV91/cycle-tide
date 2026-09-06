@@ -9,17 +9,18 @@ instead of guessing.
 
 ## The score
 
-Ten signals combine into a 0–100 composite. Higher = historically
+Eleven signals combine into a 0–100 composite. Higher = historically
 accumulation-favourable.
 
 | Signal | Weight | Category | Source |
 |---|---|---|---|
-| Drawdown from ATH | 15 | Price | self-computed |
-| MVRV Z-Score | 15 | On-chain | bitcoin-data.com |
-| Net Unrealized Profit/Loss | 12 | On-chain | bitcoin-data.com |
+| Drawdown from ATH | 13 | Price | self-computed |
+| MVRV Z-Score | 12 | On-chain | bitcoin-data.com |
 | 200-Week MA Multiple | 10 | Price | self-computed |
-| Stablecoin Supply Ratio | 10 | Liquidity | DefiLlama |
+| US Spot ETF Net Flow (30d) | 10 | Institutional | TFTC (CC BY 4.0) |
 | Fear & Greed Index | 10 | Sentiment | Alternative.me |
+| Stablecoin Supply Ratio | 9 | Liquidity | DefiLlama |
+| Net Unrealized Profit/Loss | 8 | On-chain | bitcoin-data.com |
 | Puell Multiple | 8 | On-chain | bitcoin-data.com |
 | Pi Cycle Top | 8 | Price | self-computed |
 | Perp Funding Rate | 7 | Leverage | Binance |
@@ -41,6 +42,8 @@ its threshold bands, and — importantly — its caveats.
   knows nothing about current conditions.
 - **On-chain history starts ~2022** on the free tier, and Binance price data
   starts Aug 2017 — so the 200W MA can't be computed before mid-2021.
+- **ETF flow data starts Jan 2024** (the funds did not exist before), covering
+  a single cycle. There is no prior-cycle precedent to validate it against.
 
 When fewer than 55% of the model's weight is available, or any whole category
 goes dark, the dashboard shows **NO CALL** rather than a confident-looking
@@ -66,8 +69,14 @@ Refresh the snapshot periodically (daily is plenty — these metrics update once
 a day):
 
 ```bash
-node scripts/snapshot-onchain.mjs
+node scripts/snapshot-onchain.mjs   # MVRV, NUPL, Puell
+node scripts/snapshot-etf.mjs       # US spot ETF net flows
 ```
+
+`snapshot-etf.mjs` backfills the full history from TFTC and, if a
+`SOSOVALUE_API_KEY` is present in an untracked `.env.local`, tops up the most
+recent days from SoSoValue. The key is never committed and is not needed —
+TFTC alone is sufficient.
 
 ## Data sources
 
@@ -77,6 +86,8 @@ All free, no API keys required:
 - [DefiLlama](https://defillama.com) — stablecoin supply
 - [Alternative.me](https://alternative.me/crypto/fear-and-greed-index/) — Fear & Greed Index
 - [Binance](https://binance.com) — price history, live price stream, funding rates
+- [TFTC](https://www.tftc.io/bitcoin-etf-flows) — US spot BTC ETF daily net flows
+  (CC BY 4.0; TFTC compiles these from SoSoValue and Farside Investors)
 
 ## Licence / disclaimer
 

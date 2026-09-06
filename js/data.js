@@ -182,6 +182,22 @@ const fetchMvrvZScore    = () => fetchOnchainSeries('mvrv_z', 'mvrv-zscore', 'mv
 const fetchNupl          = () => fetchOnchainSeries('nupl', 'nupl', 'nupl');
 const fetchPuellMultiple = () => fetchOnchainSeries('puell', 'puell-multiple', 'puellMultiple');
 
+// ── US spot BTC ETF net flows ────────────────────────────────────────────────
+// Served entirely from the committed snapshot (data/etf-flows.json, refreshed
+// by scripts/snapshot-etf.mjs). Deliberately NOT fetched from a third party at
+// runtime: the upstream is a community mirror that could disappear, and a dead
+// URL must never be able to break the dashboard.
+let _etfPromise = null;
+function fetchEtfFlows() {
+    if (!_etfPromise) {
+        _etfPromise = fetch('data/etf-flows.json')
+            .then(r => r.ok ? r.json() : null)
+            .then(j => Array.isArray(j?.series) ? j.series : null)
+            .catch(() => null);
+    }
+    return _etfPromise;
+}
+
 // ── DefiLlama total stablecoin supply (for SSR) ──────────────────────────────
 async function fetchStablecoinSupply() {
     return cachedFetch('stablecoin_supply', async () => {

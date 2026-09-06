@@ -16,13 +16,14 @@ async function fetchOnchainSequential() {
 let SERIES = null;
 
 async function loadAllSignals() {
-    const [daily, onchain, stableSupply, fearGreed, funding] =
+    const [daily, onchain, stableSupply, fearGreed, funding, etfFlows] =
         await Promise.all([
             fetchBTCDaily(),
             fetchOnchainSequential(),
             fetchStablecoinSupply(),
             fetchFearGreed(),
             fetchFundingRate(),
+            fetchEtfFlows(),
         ]);
     const { mvrv, nupl, puell } = onchain;
 
@@ -38,6 +39,7 @@ async function loadAllSignals() {
         ma200w_mult:  computeMa200wMultiple(daily).series,
         rsi_monthly:  computeMonthlyRSI(daily).series,
         pi_cycle:     computePiCycle(daily).series,
+        etf_flow:     etfFlows ? computeEtfFlowPercentile(etfFlows) : [],
         ssr:          stableSupply ? computeSSRPercentileSeries(daily, supply, stableSupply) : [],
         mvrv_z:       mvrv      || [],
         nupl:         nupl      || [],
@@ -54,7 +56,8 @@ async function loadAllSignals() {
 // date in range — that's what powers the date browser.
 function valuesAsOf(ts) {
     const keys = ['ath_drawdown', 'mvrv_z', 'nupl', 'puell', 'pi_cycle',
-                  'ma200w_mult', 'ssr', 'funding', 'fear_greed', 'rsi_monthly'];
+                  'ma200w_mult', 'ssr', 'funding', 'fear_greed', 'rsi_monthly',
+                  'etf_flow'];
     const values = {};
     for (const k of keys) values[k] = latestAsOf(SERIES[k], ts);
     return values;

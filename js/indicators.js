@@ -169,6 +169,39 @@ function computeSSRPercentileSeries(dailyBtc, circulatingSupplyBtc, stablecoinSe
     return out;
 }
 
+// ── ETF net flow ───────────────────────────────────────────────────────────
+// Daily net flow is far too noisy to score directly (it swings from -$1.1bn to
+// +$1.4bn day to day), so this sums a trailing 30 days and then percentile-
+// ranks that against a trailing window. The percentile is what gets scored:
+// it answers "is institutional demand strong or weak relative to this cycle?"
+// rather than "was yesterday a big day?".
+function computeEtfFlowPercentile(flowSeries, sumDays = 30, windowDays = 540) {
+    if (!flowSeries || flowSeries.length < sumDays) return [];
+
+    // Trailing 30-day sum at each day.
+    const rolling = [];
+    let sum = 0;
+    for (let i = 0; i < flowSeries.length; i++) {
+        sum += flowSeries[i].value;
+        if (i >= sumDays) sum -= flowSeries[i - sumDays].value;
+        if (i >= sumDays - 1) rolling.push({ ts: flowSeries[i].ts, value: sum });
+    }
+    if (!rolling.length) return [];
+
+    // Percentile rank of each day within its own trailing window.
+    const windowMs = windowDays * 86400000;
+    const out = [];
+    let lo = 0;
+    for (let i = 0; i < rolling.length; i++) {
+        while (rolling[lo].ts < rolling[i].ts - windowMs) lo++;
+        const win = rolling.slice(lo, i + 1);
+        if (win.length < 60) continue; // need a real distribution to rank against
+        const v = rolling[i].value;
+        out.push({ ts: rolling[i].ts, value: win.filter(p => p.value <= v).length / win.length });
+    }
+    return out;
+}
+
 // Rough circulating supply estimate (BTC), good enough for SSR — updates
 // deterministically via the halving schedule, no external call needed.
 function estimateCirculatingSupply(atTs = Date.now()) {
