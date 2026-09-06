@@ -1256,3 +1256,8 @@ body {
     margin-top: 14px !important;
 }
 .dilution-maths strong { color: var(--text-primary); }
+
+/* The two halves of the 24h change are separate flex items; without an
+   explicit display they can render as bare inline text and run together. */
+.live-change .chg-abs,
+.live-change .chg-pct { display: inline-block; }

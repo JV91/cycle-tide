@@ -69,6 +69,7 @@ function startPriceStream() {
             //   c = last price, o = 24h open, p = 24h change, P = 24h change %
             const price = parseFloat(msg.c);
             if (!(price > 0)) return;
+            const wasEmpty = !LIVE.pending;
             // Buffer only — the paint loop decides when this reaches the DOM.
             LIVE.pending = {
                 price,
@@ -77,6 +78,10 @@ function startPriceStream() {
                 changePct24h: parseFloat(msg.P),
                 ts: msg.E || Date.now(),
             };
+            // Paint the very first frame immediately. Otherwise the ticker
+            // shows an em dash for up to a full paint interval after connecting,
+            // which reads as broken rather than as "connecting".
+            if (wasEmpty) paintPending();
         } catch { /* ignore malformed frame */ }
     });
 

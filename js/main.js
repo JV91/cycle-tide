@@ -424,6 +424,11 @@ async function init() {
         renderScoreChart();
         renderTrendCard();
 
+        // Start the price stream before the asset snapshot fetch — that fetch
+        // is slower, and awaiting it first left the ticker showing an em dash
+        // long after the socket was ready.
+        startLive();
+
         // Asset tabs (BTC / MSTR / Strive). Equity data is independent of the
         // BTC pipeline, so a failure there must not block the main dashboard.
         await loadAssetData().catch(e => console.warn('[cycletide] asset data:', e));
@@ -466,8 +471,7 @@ async function init() {
             }, 200);
         });
 
-        // Live updates are always on — no toggle, the way an exchange behaves.
-        startLive();
+        // (live stream already started above, before the asset fetch)
     } catch (err) {
         console.error(err);
         statusEl.textContent = 'Error loading data: ' + err.message;
