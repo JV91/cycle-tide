@@ -1133,3 +1133,43 @@ body {
 }
 
 .damped-note { color: var(--warning); font-size: 11px; }
+
+/* ── Trend structure (context card) ─────────────────────────────────── */
+
+.trend-card { margin-bottom: 20px; }
+
+.trend-row {
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+}
+.trend-row:first-of-type { border-top: 0; padding-top: 0; }
+
+.trend-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.trend-label { font-size: 14px; font-weight: 600; }
+.trend-state {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+.trend-detail {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.trend-warning {
+    margin-top: 14px !important;
+    padding: 11px 13px;
+    background: var(--warning-bg);
+    border-left: 2px solid var(--warning);
+    border-radius: 6px;
+    color: var(--text-secondary) !important;
+}
+.trend-warning strong { color: var(--warning); }

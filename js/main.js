@@ -422,6 +422,7 @@ async function init() {
         renderFor(last);
         renderBacktest();
         renderScoreChart();
+        renderTrendCard();
 
         // Asset tabs (BTC / MSTR / Strive). Equity data is independent of the
         // BTC pipeline, so a failure there must not block the main dashboard.
@@ -472,6 +473,14 @@ async function init() {
         statusEl.textContent = 'Error loading data: ' + err.message;
         statusEl.className = 'live-dot live-err';
     }
+}
+
+// Trend structure card (BTC tab, context only — see js/trendline.js).
+function renderTrendCard() {
+    const host = document.getElementById('trendCard');
+    if (!host || !SERIES?.daily) return;
+    host.innerHTML = renderTrendStructure(SERIES.daily);
+    bindMetricToggles();
 }
 
 document.addEventListener('DOMContentLoaded', init);
