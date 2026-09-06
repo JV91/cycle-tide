@@ -42,6 +42,13 @@ and cost basis, performance against BTC over matched windows, and **mNAV** —
 market cap ÷ the value of the Bitcoin held. Below 1.0× means the market values
 the company at less than its Bitcoin alone.
 
+Every metric carries the same expandable explainer as the BTC signals — what
+it tracks, why it matters, how to read it, **how it works with the other
+metrics**, and its caveat. That interaction field is the important one here:
+mNAV, BTC per share and cost basis only mean something in combination. A
+premium lets a company issue shares accretively; at a discount the same
+issuance destroys BTC per share and the flywheel stops turning.
+
 mNAV uses diluted share counts from SEC EDGAR, which are quarterly. These
 companies issue stock frequently to buy Bitcoin, so the figure lags recent
 issuance and is indicative rather than exact between filings.

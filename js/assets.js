@@ -234,6 +234,7 @@ function renderAssetView(key) {
                 <div class="stat-row"><dt>Days since ATH</dt>
                     <dd>${athTs ? daysBetween(last.ts, athTs) : '—'}</dd></div>
             </dl>
+            ${metricInfoHtml('drawdown')}
             ${meta.treasurySince ? `<p class="asset-note">
                 Figures cover the treasury era only — from ${meta.treasurySince},
                 when the ${meta.priorName} merger completed and the company became
@@ -259,6 +260,7 @@ function renderAssetView(key) {
                 <div class="stat-row"><dt>Avg cost per BTC</dt>
                     <dd>${t.btcCostUsd && t.btcHoldings ? fmtUSD(t.btcCostUsd / t.btcHoldings) : '—'}</dd></div>
             </dl>
+            ${metricInfoHtml('costBasis')}
         </section>
 
         <section class="card">
@@ -285,7 +287,9 @@ function renderAssetView(key) {
                 (${nav.sharesAsOfDate}) — quarterly, so it lags recent issuance.
                 These companies issue stock frequently to buy Bitcoin, so mNAV
                 is indicative rather than precise between filings.
-            </p>` : `<p class="asset-empty">Share count unavailable — mNAV cannot be computed.</p>`}
+            </p>
+            ${metricInfoHtml('mnav')}
+            ${metricInfoHtml('btcPerShare')}` : `<p class="asset-empty">Share count unavailable — mNAV cannot be computed.</p>`}
         </section>` : ''}
 
         <section class="card">
@@ -308,6 +312,7 @@ function renderAssetView(key) {
                 Equity returns include leverage, dilution and company-specific
                 risk — they are not a pure Bitcoin exposure in either direction.
             </p>
+            ${metricInfoHtml('perfVsBtc')}
         </section>
 
         <section class="card">
@@ -321,10 +326,12 @@ function renderAssetView(key) {
                 performance is comparable on one axis — never two y-scales, which
                 would invent crossovers that are artifacts of scaling.
             </p>
+            ${metricInfoHtml('indexedChart')}
         </section>
     `;
 
     renderAssetChart(key);
+    bindMetricToggles();
 }
 
 // Indexed comparison chart: both series rebased to 100 so they share one axis.

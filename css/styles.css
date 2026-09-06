@@ -952,3 +952,35 @@ body {
     .asset-price { font-size: 20px; }
     .mnav-value { font-size: 34px; }
 }
+
+/* ── Asset metric explainers ────────────────────────────────────────── */
+
+.metric-explain { margin-top: 14px; }
+
+.metric-toggle {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: none;
+    border: 0;
+    color: var(--text-muted);
+    padding: 4px 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.metric-toggle:hover { color: var(--good); }
+.metric-toggle:focus-visible { outline: 2px solid var(--good); outline-offset: 2px; }
+
+.metric-explain .signal-info { margin-left: 0; margin-top: 8px; }
+
+/* The interaction block is the point of these explainers — give it a
+   different accent so it reads as distinct from the descriptive fields. */
+.info-interacts {
+    border-left: 2px solid var(--warning);
+    padding-left: 11px;
+    margin-left: -2px;
+}
+.info-interacts p { color: var(--text-secondary); }
