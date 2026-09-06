@@ -492,10 +492,19 @@ function attachAssetHover(svg, ctx) {
             <div class="tt-rel ${rel >= 0 ? 'val-up' : 'val-down'}">
                 ${rel >= 0 ? '+' : ''}${rel.toFixed(1)} pts vs BTC since start</div>`;
 
-        // Dodge the cursor vertically, clamp horizontally inside the chart.
+        // Sit ABOVE the plot area rather than tracking the curve. Anchoring to
+        // the higher series still overlapped it wherever both lines ran near
+        // the top of the chart — the tooltip would clamp to 0 and cover the
+        // very curve being read. Parking it in the header strip means the plot
+        // is never obscured, whatever the data does.
+        // The wrapper carries top padding reserved for exactly this, so the
+        // tooltip sits in that strip and the plot stays fully visible.
+        const wrapTop = tip.parentElement.getBoundingClientRect().top;
+        const svgTop = rect.top - wrapTop;             // where the plot begins
         const pxPerUnitY = rect.height / h;
-        const topPx = y(Math.max(na.v, nb.v)) * pxPerUnitY;
-        tip.style.top = `${Math.max(0, topPx - tip.offsetHeight - 12)}px`;
+        const plotTopPx = svgTop + CHART.padT * pxPerUnitY;
+        tip.style.top = `${Math.max(0, plotTopPx - tip.offsetHeight - 8)}px`;
+
         const leftPct = (x(na.ts) / CHART.w) * 100;
         const halfPct = (tip.offsetWidth / 2 / rect.width) * 100;
         tip.style.left = `${Math.min(100 - halfPct, Math.max(halfPct, leftPct)).toFixed(2)}%`;

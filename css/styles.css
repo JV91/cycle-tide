@@ -1022,3 +1022,11 @@ body {
     font-family: var(--mono);
     font-size: 11px;
 }
+
+/* Headroom above the asset chart so the hover tooltip has somewhere to sit
+   without ever covering the plot. */
+#assetView .chart-wrap { padding-top: 74px; }
+
+@media (max-width: 640px) {
+    #assetView .chart-wrap { padding-top: 92px; }
+}
