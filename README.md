@@ -108,7 +108,7 @@ issuance and is indicative rather than exact between filings.
 - **ETF flow data starts Jan 2024** (the funds did not exist before), covering
   a single cycle. There is no prior-cycle precedent to validate it against.
 
-When fewer than 55% of the model's weight is available, or any whole category
+When fewer than 70% of the model's weight is available, or any whole category
 goes dark, the dashboard shows **NO CALL** rather than a confident-looking
 number derived from whichever signals happened to load.
 
@@ -120,6 +120,28 @@ Any static file server works — there is no build step:
 python3 -m http.server 8791
 # then open http://localhost:8791
 ```
+
+## Automation
+
+`.github/workflows/daily.yml` runs after the US close each day: refreshes all
+three snapshots, recomputes the score headlessly, commits any changed data, and
+emails **only when the score crosses a band edge** — a daily "still ACCUMULATE"
+message would just train you to ignore it.
+
+`scripts/check-alerts.mjs` loads the scoring logic from the app's own source
+files rather than reimplementing it, so the emailed number cannot drift from
+what the dashboard shows.
+
+To enable email, add three repository secrets under Settings → Secrets and
+variables → Actions:
+
+| Secret | Value |
+|---|---|
+| `MAIL_USERNAME` | your Gmail address |
+| `MAIL_PASSWORD` | a Google [App Password](https://myaccount.google.com/apppasswords), not your account password |
+| `MAIL_TO` | where alerts should arrive |
+
+Without them the refresh and commit still run; only the email step is skipped.
 
 ## Keeping data fresh
 
@@ -135,7 +157,11 @@ a day):
 node scripts/snapshot-onchain.mjs     # MVRV, NUPL, Puell
 node scripts/snapshot-etf.mjs         # US spot ETF net flows
 node scripts/snapshot-treasuries.mjs  # MSTR/ASST prices, holdings, share counts
+node scripts/check-alerts.mjs         # recompute score, detect band change
 ```
+
+These run automatically via the daily workflow; the commands above are for
+running them by hand.
 
 `snapshot-etf.mjs` backfills the full history from TFTC and, if a
 `SOSOVALUE_API_KEY` is present in an untracked `.env.local`, tops up the most

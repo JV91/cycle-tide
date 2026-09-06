@@ -56,6 +56,7 @@
                 <div class="gauge-center">
                     <div id="scoreValue" class="gauge-value">—</div>
                     <div class="gauge-caption">CYCLE SCORE</div>
+                    <div id="scoreDelta" class="score-delta"></div>
                 </div>
             </div>
 
@@ -102,20 +103,18 @@
         <div id="projectionNotes" class="projection-notes"></div>
     </section>
 
-    <div id="trendCard"></div>
-
     <section class="card backtest-card">
         <h2 class="card-title">HISTORICAL BACKTEST — SCORE AT MAJOR CYCLE EVENTS</h2>
         <p class="backtest-note">
-            Rows marked <strong>computed</strong> are scored live from the same data the
-            dashboard uses — click one to load its full breakdown above. Rows marked
-            <strong>reference</strong> predate the free on-chain APIs' history (~2022) and
-            keep a documented approximate reading instead.
+            Every row is scored live from the same data the dashboard uses — click one
+            to load its full breakdown above. Events before the free on-chain APIs'
+            history (~2022) are omitted rather than shown as estimates, so nothing here
+            is a guess presented beside a computation.
         </p>
         <div class="table-wrap">
             <table class="backtest-table">
                 <thead>
-                    <tr><th>Event</th><th>Score</th><th>Signal</th><th>Phase</th><th>Source</th></tr>
+                    <tr><th>Event</th><th>Score</th><th>Signal</th><th>Phase</th></tr>
                 </thead>
                 <tbody id="backtestBody"></tbody>
             </table>
@@ -141,7 +140,6 @@
 <script src="js/asset_metrics.js"></script>
 <script src="js/asset_signal.js"></script>
 <script src="js/asset_projection.js"></script>
-<script src="js/trendline.js"></script>
 <script src="js/assets.js"></script>
 <script src="js/main.js"></script>
 </body>

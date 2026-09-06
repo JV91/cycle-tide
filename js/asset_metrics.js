@@ -36,20 +36,6 @@ const ASSET_METRIC_INFO = {
         source: 'SEC XBRL us-gaap:CryptoAssetNumberOfUnits and WeightedAverageNumberOfDilutedSharesOutstanding, with Binance BTC prices.',
     },
 
-    trendStructure: {
-        label: 'trend structure',
-        tracks: 'A line fitted through successively lower pivot highs (descending resistance) or higher pivot lows (rising support) over a 120-day window, and whether price has broken through it. Pivots are bars unmatched by any bar within 5 days either side; only those continuing the sequence are kept, discarding ones that break it.',
-        why: 'It is the classic chart setup: successive lower highs forming a ceiling, then price punching through. Worth showing because knowing where price sits relative to its recent trend is genuinely useful context. Note that drawing such a line requires CHOOSING which pivots to connect and which to skip — that discretion is where chart patterns get their subjectivity, and different reasonable choices produce different lines.',
-        scale: [
-            ['broken upward', 'above descending resistance', 'good'],
-            ['intact', 'still inside the trend', 'warn'],
-            ['broken downward', 'below rising support', 'bad'],
-        ],
-        interacts: 'Deliberately isolated from everything else. It is not scored, does not feed the cycle score, and should not be read as confirming any signal that is. If it agrees with the cycle score that is coincidence, not corroboration.',
-        caveat: 'It failed its own backtest. Over 3,308 daily bars an upside break returned +2.8% at 30 days versus a +4.9% baseline, and +8.1% at 90 days versus +17.0% — negative edge at every horizon. A cruder earlier pivot rule scored worse still (-5.8pp / -17.4pp) and was negative across all 22 parameter sets swept, so better detection did not rescue the edge. The mechanism is that breakouts fire after declines, selecting entries that lag simply holding. Treat it as descriptive geometry, not a trade signal.',
-        source: 'Self-computed from Binance daily highs/lows.',
-    },
-
     holdings: {
         label: 'the treasury',
         tracks: 'How much Bitcoin the company owns outright, what share of all Bitcoin that represents, what it paid, and what it is worth now.',

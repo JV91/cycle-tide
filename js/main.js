@@ -84,7 +84,11 @@ function contextAsOf(ts) {
 // Below this share of model weight, renormalising over what's left produces a
 // number that looks authoritative but is driven by whichever signals happened
 // to load. Report it as indeterminate instead.
-const MIN_SCOREABLE_WEIGHT = 0.55;
+//
+// Raised from 0.55 to 0.70: at 55% a verdict could rest on barely half the
+// model while presenting with full confidence. Three-quarters is a more
+// defensible floor for showing a directional call at all.
+const MIN_SCOREABLE_WEIGHT = 0.70;
 
 function computeComposite(values) {
     let weightedSum = 0, availableWeight = 0;
@@ -219,8 +223,33 @@ function renderFor(ts) {
     document.getElementById('confidenceVal').textContent =
         `${confLabel} (${scoredCount}/${breakdown.length} signals available, ${confPct}% of model weight)`;
 
+    renderScoreDelta(ts, composite);
     renderBreakdown(breakdown);
     renderDateControls(ctx.actualTs);
+}
+
+// Trajectory: where the score sat 7 and 30 days before the date being viewed.
+// A bare number says nothing about direction, and direction is most of what
+// matters when reading a cycle position.
+function renderScoreDelta(ts, composite) {
+    const el = document.getElementById('scoreDelta');
+    if (!el) return;
+    if (composite === null) { el.innerHTML = ''; return; }
+
+    const at = back => {
+        const c = computeComposite(valuesAsOf(ts - back * 86400000));
+        return (c.composite !== null && c.confidence >= MIN_SCOREABLE_WEIGHT)
+            ? c.composite : null;
+    };
+    const parts = [[7, '7d'], [30, '30d']].map(([d, lbl]) => {
+        const prev = at(d);
+        if (prev === null) return `<span class="delta-item delta-na">${lbl} —</span>`;
+        const diff = composite - prev;
+        const cls = Math.abs(diff) < 0.5 ? 'delta-flat' : diff > 0 ? 'delta-up' : 'delta-down';
+        const sign = diff > 0 ? '+' : '';
+        return `<span class="delta-item ${cls}">${lbl} ${sign}${diff.toFixed(1)}</span>`;
+    });
+    el.innerHTML = parts.join('');
 }
 
 // ── Date browser ────────────────────────────────────────────────────────────
@@ -382,16 +411,15 @@ function renderBacktest() {
 
     for (const ev of BACKTEST_EVENTS) {
         const evTs = new Date(ev.date + '-15').getTime();
-        const inRange = evTs >= first && evTs <= last;
+        if (evTs < first || evTs > last) continue;   // no data — omit entirely
 
-        let score = ev.score, computed = false;
-        if (inRange) {
-            const c = computeComposite(valuesAsOf(evTs));
-            if (c.composite !== null && c.confidence >= 0.5) {
-                score = Math.round(c.composite);
-                computed = true;
-            }
-        }
+        const c = computeComposite(valuesAsOf(evTs));
+        // Only show rows the model can actually score. Hardcoded estimates
+        // sitting beside computed values invited false equivalence.
+        if (c.composite === null || c.confidence < 0.5) continue;
+        const score = Math.round(c.composite);
+        const computed = true;
+        const inRange = true;
         const phase = phaseForScore(score);
 
         const tr = document.createElement('tr');
@@ -401,7 +429,6 @@ function renderBacktest() {
             <td><span class="score-chip">${score}</span></td>
             <td><span class="signal-chip ${signalClass(phase.signal)}">${phase.signal.toUpperCase()}</span></td>
             <td>${phase.label}</td>
-            <td class="src-cell">${computed ? 'computed' : 'reference'}</td>
         `;
         if (inRange) {
             tr.title = 'Click to view the full breakdown for this date';
@@ -422,7 +449,6 @@ async function init() {
         renderFor(last);
         renderBacktest();
         renderScoreChart();
-        renderTrendCard();
 
         // Start the price stream before the asset snapshot fetch — that fetch
         // is slower, and awaiting it first left the ticker showing an em dash
@@ -477,14 +503,6 @@ async function init() {
         statusEl.textContent = 'Error loading data: ' + err.message;
         statusEl.className = 'live-dot live-err';
     }
-}
-
-// Trend structure card (BTC tab, context only — see js/trendline.js).
-function renderTrendCard() {
-    const host = document.getElementById('trendCard');
-    if (!host || !SERIES?.daily) return;
-    host.innerHTML = renderTrendStructure(SERIES.daily);
-    bindMetricToggles();
 }
 
 document.addEventListener('DOMContentLoaded', init);

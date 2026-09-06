@@ -273,6 +273,7 @@ function renderAssetView(key) {
             // window that fits if 3M is unavailable.
             const p3 = perf.find(p => p.lbl === '3M') || perf[perf.length - 1];
             return renderAssetSignal({
+                companyKey: key,
                 mnav: nav.mnav,
                 unrealisedPct: nav.unrealisedPct,
                 relPerf: p3 && p3.asset !== null && p3.btc !== null ? p3.asset - p3.btc : null,
@@ -453,8 +454,12 @@ function renderAssetChart(key, projCtx) {
                   label: 'BTC projected' },
                 { cls: 'chart-line-proj', pts: mk('backing', projCtx.mnav),
                   label: 'backing after dilution, at today’s mNAV' },
-                { cls: 'chart-line-beta', pts: mk('beta', null),
-                  label: 'beta-implied' },
+                // Fade the beta path when correlation is weak: Strive's beta
+                // explains barely half its movement (corr ~0.55 over ~250d)
+                // versus MSTR's 0.74 over 1254d, and drawing them with equal
+                // visual weight implies equal confidence.
+                { cls: 'chart-line-beta' + (pr.beta && pr.beta.corr < 0.6 ? ' chart-line-weakbeta' : ''),
+                  pts: mk('beta', null), label: 'beta-implied' },
             ].filter(p => p.pts.length > 1);
         }
     }
@@ -529,7 +534,8 @@ function renderAssetChart(key, projCtx) {
         <span class="lg-item"><span class="lg-swatch lg-price"></span>BTC</span>
         ${projPts.length ? `<span class="lg-item"><span class="lg-swatch lg-btcproj"></span>BTC projected</span>
         <span class="lg-item"><span class="lg-swatch lg-proj"></span>projected (backing)</span>
-        <span class="lg-item"><span class="lg-swatch lg-beta"></span>projected (beta)</span>` : ''}
+        <span class="lg-item"><span class="lg-swatch lg-beta"></span>projected (beta)${
+            projPts.some(p=>/weakbeta/.test(p.cls)) ? ' <span class="lg-warn">— weak fit</span>' : ''}</span>` : ''}
         <span class="lg-item lg-hint">log scale · both = 100 at ${new Date(start).toISOString().slice(0, 10)}${
             pivot && start === pivot ? ` · from ${meta.label} treasury pivot` : ''}</span>`;
     svg.parentElement.parentElement.insertBefore(legend, svg.parentElement);

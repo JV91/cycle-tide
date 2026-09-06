@@ -1,0 +1,75 @@
+name: Daily data refresh and alert
+
+# Runs after the US close so ETF flows and equity prices are settled.
+on:
+  schedule:
+    - cron: '0 23 * * *'
+  workflow_dispatch:        # manual trigger for testing
+
+permissions:
+  contents: write           # needed to commit refreshed snapshots
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Each snapshot is independent — one failing source must not stop the
+      # others. bitcoin-data.com in particular rate-limits at 10 req/hour.
+      - name: Refresh on-chain snapshot
+        continue-on-error: true
+        run: node scripts/snapshot-onchain.mjs
+
+      - name: Refresh ETF flows
+        continue-on-error: true
+        run: node scripts/snapshot-etf.mjs
+
+      - name: Refresh treasury data
+        continue-on-error: true
+        run: node scripts/snapshot-treasuries.mjs
+
+      - name: Compute score and detect band change
+        id: check
+        run: node scripts/check-alerts.mjs
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "Daily data refresh — score ${{ steps.check.outputs.score }} (${{ steps.check.outputs.band }})"
+          git push
+
+      # Only emails on an actual band crossing, not every day. A daily "still
+      # ACCUMULATE" message trains you to ignore the alert entirely.
+      - name: Email on band change
+        if: steps.check.outputs.changed == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: Cycle Tide
+          to: ${{ secrets.MAIL_TO }}
+          subject: "Cycle Tide: ${{ steps.check.outputs.previous }} → ${{ steps.check.outputs.band }}"
+          body: |
+            The BTC cycle score has crossed a band edge.
+
+              Previous band : ${{ steps.check.outputs.previous }}
+              New band      : ${{ steps.check.outputs.band }}
+              Score         : ${{ steps.check.outputs.score }}/100
+              Confidence    : ${{ steps.check.outputs.confidence }}% of model weight
+              BTC price     : $${{ steps.check.outputs.price }}
+
+            https://jv91.github.io/cycle-tide/
+
+            This is a historical risk/reward context tool, not financial advice.
+            A band change means conditions moved relative to prior cycles — it
+            is not a recommendation to trade.

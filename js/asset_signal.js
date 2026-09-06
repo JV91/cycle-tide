@@ -99,7 +99,7 @@ function assetSignalBands(score) {
 
 // Requires the dominant factor: an "ACCUMULATE" driven only by the two minor
 // factors, with mNAV missing, would be an unsupported call.
-const ASSET_MIN_WEIGHT = 0.6;
+const ASSET_MIN_WEIGHT = 0.75;
 
 function computeAssetSignal(ctx) {
     // A price crash makes all three factors fire negative at once — but
@@ -139,7 +139,13 @@ function computeAssetSignal(ctx) {
     // cheap while you pay more than the coins are worth.
     const atDiscount = m !== null && m !== undefined && m < 0.95;
 
-    return { composite, confidence, factors, reliable, mnavAvailable, atDiscount };
+    // Can this company's thresholds be checked against its own history at all?
+    // MSTR tags holdings in XBRL so a real mNAV range exists; Strive does not,
+    // so its verdict rests entirely on reasoned thresholds with no empirical
+    // bracket. That difference should be visible, not buried in an explainer.
+    const validated = !!(TREASURIES?.[ctx.companyKey]?.holdingsHistory?.length);
+
+    return { composite, confidence, factors, reliable, mnavAvailable, atDiscount, validated };
 }
 
 function renderAssetSignal(ctx) {
@@ -169,6 +175,7 @@ function renderAssetSignal(ctx) {
                 </div>
             </div>
             <div class="asset-signal-verdict">
+                ${r.validated ? '' : `<div class="unvalidated-flag" title="No historical mNAV exists for this company, so these thresholds cannot be checked against its own past">UNVALIDATED THRESHOLDS</div>`}
                 <div class="signal-pill ${cls}">${
                     r.reliable ? band.signal.toUpperCase() : 'NO CALL'}</div>
                 <div class="asset-signal-label">${escapeHtml(band.label)}</div>

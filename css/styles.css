@@ -1261,3 +1261,35 @@ body {
    explicit display they can render as bare inline text and run together. */
 .live-change .chg-abs,
 .live-change .chg-pct { display: inline-block; }
+
+.unvalidated-flag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    color: var(--warning);
+    background: var(--warning-bg);
+    border: 1px solid var(--warning);
+    border-radius: 4px;
+    padding: 2px 7px;
+    margin-bottom: 8px;
+    cursor: help;
+}
+
+/* Score trajectory under the gauge. */
+.score-delta {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+}
+.delta-item { color: var(--text-muted); display: inline-block; }
+.delta-up   { color: var(--good); }
+.delta-down { color: var(--critical); }
+.delta-flat { color: var(--text-muted); }
+.delta-na   { opacity: 0.5; }
+
+.chart-line-weakbeta { opacity: 0.35; stroke-dasharray: 1 5; }
+.lg-warn { color: var(--warning); }
