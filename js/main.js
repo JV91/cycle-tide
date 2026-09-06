@@ -416,6 +416,12 @@ async function init() {
         renderBacktest();
         renderScoreChart();
 
+        // Asset tabs (BTC / MSTR / Strive). Equity data is independent of the
+        // BTC pipeline, so a failure there must not block the main dashboard.
+        await loadAssetData().catch(e => console.warn('[cycletide] asset data:', e));
+        renderTabs();
+        if (activeTab !== 'BTC') switchTab(activeTab);
+
         // Date browser controls
         document.getElementById('prevDay').addEventListener('click', () => stepDay(-1));
         document.getElementById('nextDay').addEventListener('click', () => stepDay(1));

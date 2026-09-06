@@ -286,3 +286,20 @@ function unavailableReason(signalKey) {
     }
     return 'data source unreachable';
 }
+
+// ── Equity price history ────────────────────────────────────────────────────
+// Served from the committed treasuries snapshot, NOT fetched live: Yahoo's
+// chart endpoint sends no CORS headers, so a browser request is blocked
+// outright. scripts/snapshot-treasuries.mjs fetches it server-side instead.
+
+// ── Treasury reference data (committed snapshot) ────────────────────────────
+let _treasuryPromise = null;
+function fetchTreasuries() {
+    if (!_treasuryPromise) {
+        _treasuryPromise = fetch('data/treasuries.json')
+            .then(r => r.ok ? r.json() : null)
+            .then(j => j?.companies || null)
+            .catch(() => null);
+    }
+    return _treasuryPromise;
+}

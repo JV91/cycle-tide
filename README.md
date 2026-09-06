@@ -29,6 +29,23 @@ accumulation-favourable.
 Click any signal in the dashboard to see what it tracks, why it's predictive,
 its threshold bands, and — importantly — its caveats.
 
+## Treasury company tabs
+
+Two additional tabs cover **Strategy (MSTR)** and **Strive (ASST)** — Bitcoin
+treasury companies. They deliberately show **no 0–100 score**: eight of the
+eleven signals are Bitcoin-network data (MVRV, NUPL, Puell, ETF flows, Pi
+Cycle) that does not exist for an equity, and renormalising the rest would
+produce a confident-looking number measuring something it cannot see.
+
+Instead they show what is directly measurable: price and drawdown, BTC held
+and cost basis, performance against BTC over matched windows, and **mNAV** —
+market cap ÷ the value of the Bitcoin held. Below 1.0× means the market values
+the company at less than its Bitcoin alone.
+
+mNAV uses diluted share counts from SEC EDGAR, which are quarterly. These
+companies issue stock frequently to buy Bitcoin, so the figure lags recent
+issuance and is indicative rather than exact between filings.
+
 ## Honest limitations
 
 - **Three complete cycles** is a very small sample to generalise from.
@@ -69,8 +86,9 @@ Refresh the snapshot periodically (daily is plenty — these metrics update once
 a day):
 
 ```bash
-node scripts/snapshot-onchain.mjs   # MVRV, NUPL, Puell
-node scripts/snapshot-etf.mjs       # US spot ETF net flows
+node scripts/snapshot-onchain.mjs     # MVRV, NUPL, Puell
+node scripts/snapshot-etf.mjs         # US spot ETF net flows
+node scripts/snapshot-treasuries.mjs  # MSTR/ASST prices, holdings, share counts
 ```
 
 `snapshot-etf.mjs` backfills the full history from TFTC and, if a
@@ -88,6 +106,10 @@ All free, no API keys required:
 - [Binance](https://binance.com) — price history, live price stream, funding rates
 - [TFTC](https://www.tftc.io/bitcoin-etf-flows) — US spot BTC ETF daily net flows
   (CC BY 4.0; TFTC compiles these from SoSoValue and Farside Investors)
+- [CoinGecko](https://www.coingecko.com) — public-company BTC treasury holdings
+- [SEC EDGAR](https://www.sec.gov/edgar) — diluted shares outstanding (XBRL)
+- Yahoo Finance — MSTR/ASST daily prices (fetched server-side; the endpoint
+  sends no CORS headers, so a browser cannot call it directly)
 
 ## Licence / disclaimer
 
