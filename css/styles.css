@@ -1030,3 +1030,69 @@ body {
 @media (max-width: 640px) {
     #assetView .chart-wrap { padding-top: 92px; }
 }
+
+/* ── Asset valuation signal ─────────────────────────────────────────── */
+
+.asset-signal-top {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.asset-gauge-wrap {
+    position: relative;
+    width: 130px;
+    height: 130px;
+    flex-shrink: 0;
+}
+.asset-gauge { width: 100%; height: 100%; }
+
+.asset-gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.asset-gauge-value {
+    font-family: var(--mono);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.asset-signal-verdict { flex: 1 1 220px; }
+.asset-signal-verdict .signal-pill {
+    display: inline-block;
+    padding: 7px 16px;
+    margin-bottom: 9px;
+}
+
+.asset-signal-label {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+.asset-signal-sub {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    max-width: 420px;
+}
+
+.asset-factors {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+}
+.asset-factor.unscored { opacity: 0.5; }
+
+@media (max-width: 640px) {
+    .asset-signal-top { gap: 16px; }
+    .asset-gauge-wrap { width: 104px; height: 104px; }
+    .asset-gauge-value { font-size: 25px; }
+}

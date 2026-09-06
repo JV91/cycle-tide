@@ -243,6 +243,21 @@ function renderAssetView(key) {
             </p>` : ''}
         </section>
 
+        ${nav ? (() => {
+            // Prefer a 3M window for the relative-performance factor so the two
+            // companies stay comparable — Strive's treasury era is too short for
+            // 1Y, and silently scoring them over different horizons would make
+            // the factor meaningless across tabs. Falls back to the longest
+            // window that fits if 3M is unavailable.
+            const p3 = perf.find(p => p.lbl === '3M') || perf[perf.length - 1];
+            return renderAssetSignal({
+                mnav: nav.mnav,
+                unrealisedPct: nav.unrealisedPct,
+                relPerf: p3 && p3.asset !== null && p3.btc !== null ? p3.asset - p3.btc : null,
+                relPerfWindow: p3 ? p3.lbl : '',
+            });
+        })() : ''}
+
         ${t?.btcHoldings ? `
         <section class="card">
             <h2 class="card-title">BITCOIN TREASURY</h2>

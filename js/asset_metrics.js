@@ -7,6 +7,21 @@
 // people misjudge these companies.
 
 const ASSET_METRIC_INFO = {
+    valuationRead: {
+        label: 'this read',
+        tracks: 'A weighted 0-100 read on whether the company is cheap or expensive RELATIVE TO THE BITCOIN IT HOLDS. Three inputs: valuation vs holdings (mNAV, 55), treasury position vs cost (25), and whether the equity has actually beaten holding Bitcoin (20).',
+        why: 'A treasury company has something Bitcoin itself does not: a fair-value anchor. You can price it against the coins on its balance sheet. That makes a valuation call possible here even though the Bitcoin tab deliberately refuses to make a price call — the two are answering different questions.',
+        scale: [
+            ['70-100', 'cheap vs its Bitcoin', 'good'],
+            ['45-70', 'fairly priced', 'warn'],
+            ['25-45', 'rich vs its Bitcoin', 'bad'],
+            ['0-25', 'expensive vs its Bitcoin', 'bad'],
+        ],
+        interacts: 'This is emphatically NOT a view on Bitcoin. A company can read cheap here while Bitcoin itself is at a cycle top — the two questions are separate, and you need both. Check the Bitcoin tab for cycle position, then this for whether the wrapper is a sensible way to express it.',
+        caveat: 'The thresholds are reasoned judgements about the economics, NOT levels fitted to historical data. Only current BTC holdings are available (no history), so mNAV cannot be percentile-ranked against each company’s own past the way the Bitcoin signals are. It also ignores debt, convertibles, operating businesses and management risk — a leveraged company at 0.8x is not the same bet as an unleveraged one.',
+        source: 'Computed from mNAV, CoinGecko cost basis, and performance vs BTC.',
+    },
+
     mnav: {
         label: 'mNAV',
         tracks: 'What the stock market charges you for the Bitcoin the company already owns. 1.0x means the company is valued at exactly its Bitcoin; 0.8x means you buy $1 of BTC exposure for 80 cents; 1.5x means you pay $1.50 for it.',

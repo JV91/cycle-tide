@@ -42,6 +42,20 @@ and cost basis, performance against BTC over matched windows, and **mNAV** —
 market cap ÷ the value of the Bitcoin held. Below 1.0× means the market values
 the company at less than its Bitcoin alone.
 
+Each treasury tab carries a **valuation read** — a 0-100 score with an
+ACCUMULATE / HOLD / DISTRIBUTE call. Unlike the Bitcoin tab, a valuation call
+is possible here because these companies have a fair-value anchor: the Bitcoin
+on their balance sheet. It weighs mNAV (55), treasury position vs cost (25),
+and whether the equity has actually beaten holding Bitcoin (20).
+
+**It is not a view on Bitcoin.** A company can read cheap against its own
+coins while Bitcoin itself sits at a cycle top; the two tabs answer different
+questions. The thresholds are reasoned judgements about the economics, not
+levels fitted to data — only current BTC holdings are available, so mNAV
+cannot be percentile-ranked against each company's own history the way the
+Bitcoin signals are. If mNAV is unavailable the read shows NO CALL rather
+than scoring on the minor factors alone.
+
 Every metric carries the same expandable explainer as the BTC signals — what
 it tracks, why it matters, how to read it, **how it works with the other
 metrics**, and its caveat. That interaction field is the important one here:
