@@ -36,6 +36,20 @@ const ASSET_METRIC_INFO = {
         source: 'SEC XBRL us-gaap:CryptoAssetNumberOfUnits and WeightedAverageNumberOfDilutedSharesOutstanding, with Binance BTC prices.',
     },
 
+    allocation: {
+        label: 'this allocation',
+        tracks: 'Where the month’s contribution goes: a fixed amount to spot Bitcoin, and the treasury slice to whichever of MSTR/ASST trades at the lower mNAV — or to spot if neither is below 0.95x.',
+        why: 'Returns in these names have come from buying below the value of the coins and being paid when the discount closes. Strive returned +115% in one recent window, but roughly 62% of that was its mNAV re-rating from 0.59x to 1.01x — a gain collected by whoever bought at the discount, not available to someone buying afterwards. Picking the cheaper each month targets that mechanism instead of chasing it.',
+        scale: [
+            ['below 0.8x', 'wrapper buys meaningfully more BTC', 'good'],
+            ['0.8x to 0.95x', 'modest edge over spot', 'warn'],
+            ['at or above parity', 'no edge — spot is cleaner', 'bad'],
+        ],
+        interacts: 'Read alongside the Bitcoin tab, which answers a different question: this decides WHICH wrapper, not WHETHER to buy. Also check BTC per share on the chosen name — a discount is only worth capturing if the company is not diluting the coins away faster than it accumulates them.',
+        caveat: 'Backtested monthly over Strive’s treasury era only (Oct 2025 - Aug 2026): pick-cheaper +76% vs 50/50 +42% and always-MSTR -2%. Eleven months across one partial cycle is a thin sample, and with hindsight always-ASST scored higher (+85%). The rule rests on its mechanism, not that backtest. It also ignores debt, convertibles, and the risk that a discount persists or widens indefinitely.',
+        source: 'Computed from live mNAV on each treasury tab.',
+    },
+
     holdings: {
         label: 'the treasury',
         tracks: 'How much Bitcoin the company owns outright, what share of all Bitcoin that represents, what it paid, and what it is worth now.',

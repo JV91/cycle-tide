@@ -29,6 +29,27 @@ accumulation-favourable.
 Click any signal in the dashboard to see what it tracks, why it's predictive,
 its threshold bands, and — importantly — its caveats.
 
+## Monthly allocation
+
+A card at the top answers one operational question: where does this month's
+contribution go? A fixed slice to spot Bitcoin, and the treasury slice to
+whichever of MSTR/ASST trades at the **bigger discount to the Bitcoin it
+holds** — or to spot if neither is below 0.95x mNAV.
+
+The rule targets the mechanism that has actually produced returns in these
+names. Strive returned +115% in one recent window, but roughly 62% of that was
+its mNAV re-rating from 0.59x to 1.01x — a gain collected by whoever bought at
+the discount, not available to someone buying after it closed.
+
+Backtested monthly over Strive's treasury era (Oct 2025 - Aug 2026), 2k/month:
+pick-cheaper **+76%**, fixed 50/50 split **+42%**, always-MSTR **-2%**. It also
+correctly refused Strive while it traded at 9-16x mNAV in late 2025. Caveat
+stated in the UI: eleven months across one partial cycle is a thin sample, and
+with hindsight always-ASST scored higher (+85%) — the rule rests on its
+mechanism, not that backtest.
+
+Amounts live in `ALLOC_PLAN` at the top of `js/allocation.js`.
+
 ## Treasury company tabs
 
 Two additional tabs cover **Strategy (MSTR)** and **Strive (ASST)** — Bitcoin

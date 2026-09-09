@@ -459,6 +459,7 @@ async function init() {
         // BTC pipeline, so a failure there must not block the main dashboard.
         await loadAssetData().catch(e => console.warn('[cycletide] asset data:', e));
         renderTabs();
+        renderAllocation();
         if (activeTab !== 'BTC') switchTab(activeTab);
 
         // Date browser controls
