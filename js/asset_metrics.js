@@ -267,18 +267,26 @@ function metricInfoHtml(key) {
         </div>`;
 }
 
-// Delegated, and bound once — the asset view is re-rendered wholesale on every
-// toggle, so per-button listeners would be lost.
+// Delegated from `document`, bound once. Two reasons it cannot hang off a
+// single container: explainers appear in the asset view AND in the allocation
+// card, which sits outside it (clicks there previously went nowhere); and the
+// host is re-rendered wholesale on every toggle, so per-button listeners would
+// not survive.
 function bindMetricToggles() {
-    const root = document.getElementById('assetView');
-    if (!root || root._metricBound) return;
-    root._metricBound = true;
-    root.addEventListener('click', e => {
+    if (document._metricBound) return;
+    document._metricBound = true;
+    document.addEventListener('click', e => {
         const btn = e.target.closest('.metric-toggle');
         if (!btn) return;
         const key = btn.dataset.metric;
         if (expandedMetrics.has(key)) expandedMetrics.delete(key);
         else expandedMetrics.add(key);
-        renderAssetView(activeTab);
+
+        // Re-render whichever host owns this button, not always the asset view.
+        if (btn.closest('#allocationCard')) {
+            if (typeof renderAllocation === 'function') renderAllocation();
+        } else if (typeof activeTab !== 'undefined' && activeTab !== 'BTC') {
+            renderAssetView(activeTab);
+        }
     });
 }

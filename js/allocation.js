@@ -153,4 +153,8 @@ function renderAllocation() {
         </p>
         ${metricInfoHtml('allocation')}
     </section>`;
+
+    // The card can render before any tab is opened, so bind here too — the
+    // guard inside makes repeat calls harmless.
+    if (typeof bindMetricToggles === 'function') bindMetricToggles();
 }
