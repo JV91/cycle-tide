@@ -29,6 +29,28 @@ const ALLOC_PLAN = {
 // it, you are taking equity/dilution/single-name risk for no extra exposure.
 const ALLOC_MIN_DISCOUNT = 0.95;
 
+// How old is the equity price data? BTC streams live but equity prices come
+// from a committed snapshot, so the two can drift apart. A 7% stale MSTR price
+// moved mNAV by 7.6% — enough to mislead, so the age is surfaced rather than
+// left for the reader to assume.
+function equityDataAge() {
+    let newest = 0;
+    for (const tab of ASSET_TABS) {
+        if (tab.key === 'BTC') continue;
+        const px = EQUITY[tab.key];
+        if (px?.length) newest = Math.max(newest, px[px.length - 1].ts);
+    }
+    if (!newest) return null;
+    // Compare to the last weekday: a Saturday reading of a Friday bar is fresh.
+    const now = new Date();
+    let ref = new Date(now);
+    while (ref.getUTCDay() === 0 || ref.getUTCDay() === 6) ref.setUTCDate(ref.getUTCDate() - 1);
+    const days = Math.floor((Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate())
+        - Date.UTC(new Date(newest).getUTCFullYear(), new Date(newest).getUTCMonth(), new Date(newest).getUTCDate()))
+        / 86400000);
+    return { ts: newest, sessionsBehind: Math.max(0, days) };
+}
+
 function allocationCandidates() {
     const btcPrice = SERIES?.daily?.length
         ? SERIES.daily[SERIES.daily.length - 1].close : null;
@@ -55,7 +77,7 @@ function allocationCandidates() {
     }
     if (!out.length) return null;
     out.sort((a, b) => a.mnav - b.mnav);
-    return { btcPrice, candidates: out };
+    return { btcPrice, candidates: out, age: equityDataAge() };
 }
 
 function renderAllocation() {
@@ -70,9 +92,20 @@ function renderAllocation() {
     const shares = P.treasury / best.price;
     const btcUnits = P.btc / a.btcPrice;
 
+    const age = a.age;
+    const stale = age && age.sessionsBehind >= 1;
+
     host.innerHTML = `
     <section class="card alloc-card">
         <h2 class="card-title">THIS MONTH'S ALLOCATION</h2>
+        ${stale ? `<p class="alloc-stale">
+            Equity prices are from ${new Date(age.ts).toISOString().slice(0, 10)},
+            ${age.sessionsBehind} trading session${age.sessionsBehind === 1 ? '' : 's'} behind.
+            Bitcoin is live, so the mNAV figures below are approximate — a 7% move in
+            the share price shifts mNAV by about the same amount. Re-run
+            <code>node scripts/snapshot-treasuries.mjs</code> (or wait for the daily
+            workflow) before acting on the exact numbers.
+        </p>` : ''}
         <div class="alloc-rows">
             <div class="alloc-row">
                 <span class="alloc-amt">${P.currency} ${P.btc.toLocaleString()}</span>

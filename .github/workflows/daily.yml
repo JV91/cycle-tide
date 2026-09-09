@@ -1,8 +1,14 @@
-name: Daily data refresh and alert
+name: Data refresh and alert
 
-# Runs after the US close so ETF flows and equity prices are settled.
+# Twice on weekdays: once mid-session (~18:00 UTC / 14:00 ET) so equity prices
+# do not sit a full day stale while BTC streams live, and once after the close
+# (~23:00 UTC) when ETF flows and settled closes are available.
+#
+# A single daily run left MSTR up to 7% stale, which moved mNAV by the same
+# amount — enough to distort the allocation figures on a decision tool.
 on:
   schedule:
+    - cron: '0 18 * * 1-5'
     - cron: '0 23 * * *'
   workflow_dispatch:        # manual trigger for testing
 

@@ -250,6 +250,17 @@ function renderAssetView(key) {
                 <div class="stat-row"><dt>Days since ATH</dt>
                     <dd>${athTs ? daysBetween(last.ts, athTs) : '—'}</dd></div>
             </dl>
+            ${(() => {
+                if (viewTs !== null && !isToday(viewTs)) return '';
+                const age = typeof equityDataAge === 'function' ? equityDataAge() : null;
+                if (!age || age.sessionsBehind < 1) return '';
+                return `<p class="asset-note alloc-stale">
+                    Price is from ${new Date(age.ts).toISOString().slice(0, 10)},
+                    ${age.sessionsBehind} trading session${age.sessionsBehind === 1 ? '' : 's'} behind —
+                    Bitcoin is live but equity prices come from the daily snapshot, so
+                    mNAV and the valuation read are approximate right now.
+                </p>`;
+            })()}
             ${viewTs !== null && !isToday(viewTs) ? `<p class="asset-note asof-note">
                 Showing ${escapeHtml(new Date(last.ts).toISOString().slice(0, 10))} —
                 every figure on this tab, including the valuation read, is computed
