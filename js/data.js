@@ -245,14 +245,22 @@ async function fetchFundingRate() {
 }
 
 // ── Helpers: latest value at/before a timestamp from a {ts,value}[] series ──
-function latestAsOf(series, ts) {
-    if (!series || !series.length) return null;
+// The timestamp of the row actually used is recorded in VALUE_TS (keyed by the
+// caller). Without it nothing downstream can tell a value computed from today's
+// data apart from one carried forward from a week-old snapshot, and the
+// dashboard reported "100% of model weight" while three signals were six days
+// stale behind a rate-limited API.
+const VALUE_TS = {};
+
+function latestAsOf(series, ts, key) {
+    if (!series || !series.length) { if (key) VALUE_TS[key] = null; return null; }
     let lo = 0, hi = series.length - 1, ans = null;
     while (lo <= hi) {
         const mid = (lo + hi) >> 1;
         if (series[mid].ts <= ts) { ans = series[mid]; lo = mid + 1; }
         else hi = mid - 1;
     }
+    if (key) VALUE_TS[key] = ans ? ans.ts : null;
     return ans ? ans.value : null;
 }
 

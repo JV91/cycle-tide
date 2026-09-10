@@ -59,7 +59,7 @@ function valuesAsOf(ts) {
                   'ma200w_mult', 'ssr', 'funding', 'fear_greed', 'rsi_monthly',
                   'etf_flow'];
     const values = {};
-    for (const k of keys) values[k] = latestAsOf(SERIES[k], ts);
+    for (const k of keys) values[k] = latestAsOf(SERIES[k], ts, k);
     return values;
 }
 
@@ -89,6 +89,11 @@ function contextAsOf(ts) {
 // model while presenting with full confidence. Three-quarters is a more
 // defensible floor for showing a directional call at all.
 const MIN_SCOREABLE_WEIGHT = 0.70;
+
+// A daily metric that has not advanced in this many days is being served from
+// a stale snapshot, not merely published late. Two days absorbs weekends and
+// normal publication lag; beyond that the value no longer describes today.
+const STALE_SIGNAL_DAYS = 3;
 
 function computeComposite(values) {
     let weightedSum = 0, availableWeight = 0;
@@ -219,9 +224,41 @@ function renderFor(ts) {
 
     const scoredCount = breakdown.filter(b => b.score !== null).length;
     const confPct = Math.round(confidence * 100);
-    const confLabel = confidence >= 0.85 ? 'High' : confidence >= 0.6 ? 'Medium' : 'Low';
-    document.getElementById('confidenceVal').textContent =
-        `${confLabel} (${scoredCount}/${breakdown.length} signals available, ${confPct}% of model weight)`;
+    let confLabel = confidence >= 0.85 ? 'High' : confidence >= 0.6 ? 'Medium' : 'Low';
+
+    // "Available" is not the same as "current". A signal served from a stale
+    // snapshot still counts toward model weight, so without this the header
+    // could read "100% of model weight" while a quarter of it was days old.
+    //
+    // Only meaningful when viewing the LATEST bar — when browsing history every
+    // value is old by construction and its age says nothing. Compare against
+    // the last bar rather than testing `viewTs === null`, because renderFor()
+    // assigns viewTs before reaching this point, so that test never fires.
+    const stale = [];
+    if (ctx.actualTs >= dayBounds().last) {
+        for (const b of breakdown) {
+            if (b.score === null) continue;
+            const vts = VALUE_TS[b.key];
+            if (!vts) continue;
+            const days = Math.floor((ctx.actualTs - vts) / 86400000);
+            if (days >= STALE_SIGNAL_DAYS) stale.push({ label: b.label, days, weight: b.weight });
+        }
+    }
+    stale.sort((a, b) => b.days - a.days);
+
+    const staleWeight = stale.reduce((sum, x) => sum + x.weight, 0);
+    // Data this old is a real dent in the read, not a footnote.
+    if (staleWeight >= 25 && confLabel === 'High') confLabel = 'Medium';
+
+    const conf = document.getElementById('confidenceVal');
+    conf.textContent =
+        `${confLabel} (${scoredCount}/${breakdown.length} signals available, ${confPct}% of model weight`
+        + (stale.length ? `; ${staleWeight}% of weight is ${stale[0].days}d stale)` : ')');
+    conf.title = stale.length
+        ? 'Served from a cached snapshot rather than a live fetch:\n'
+          + stale.map(x => `  ${x.label} — ${x.days} day${x.days === 1 ? '' : 's'} old (${x.weight}% weight)`).join('\n')
+        : '';
+    conf.classList.toggle('conf-stale', stale.length > 0);
 
     renderScoreDelta(ts, composite);
     renderBreakdown(breakdown);

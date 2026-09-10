@@ -350,6 +350,14 @@ body {
     font-size: 12px !important;
 }
 
+/* Some of the model weight is being served from a cached snapshot rather than
+   a live fetch. Amber, not red: the score is still usable, it is just not as
+   current as "updated <time>" in the header implies. Hover for the breakdown. */
+.confidence-val.conf-stale {
+    color: var(--warning) !important;
+    cursor: help;
+}
+
 /* ── Breakdown ──────────────────────────────────────────────────────── */
 
 .breakdown-list { display: flex; flex-direction: column; gap: 18px; }
