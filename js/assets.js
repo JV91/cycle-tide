@@ -116,6 +116,29 @@ function computeMnav(companyKey, btcPrice, asOfTs) {
 
     const marketCap = last.close * sh.shares;
     const btcValue  = t.btcHoldings * btcPrice;
+
+    // Holdings are live (CoinGecko); share counts are quarterly (SEC). These
+    // companies buy Bitcoin BY ISSUING STOCK, so a company whose stack has
+    // grown a lot since its last filing has also issued shares we are not
+    // counting — and its mNAV is understated by roughly that much. The bias is
+    // one-directional and it is NOT symmetric between companies: MSTR's stack
+    // is flat since 2026-06-30 while Strive's grew ~23%, so the same stale
+    // share count flatters Strive far more. Quantify it rather than leaving the
+    // reader to assume the two figures are equally trustworthy.
+    //
+    // Strive tags no coin count in XBRL, so holdingsHistory is empty for it and
+    // the direct comparison is unavailable — for exactly the company that needs
+    // it most. Fall back to the coin count IMPLIED by the filed balance sheet
+    // (digital assets at fair value / BTC price on the period end date), which
+    // is derivable for any filer that reports a dollar value.
+    let filedBtc = (t.holdingsHistory || []).find(h => h.end === sh.end)?.btc ?? null;
+    if (filedBtc === null && t.filedDigitalAssets?.[sh.end] && SERIES?.daily?.length) {
+        const endTs = Date.parse(sh.end + 'T00:00:00Z');
+        let px = null;
+        for (const p of SERIES.daily) { if (p.ts <= endTs) px = p.close; else break; }
+        if (px) filedBtc = t.filedDigitalAssets[sh.end] / px;
+    }
+    const stackGrowth = filedBtc ? (t.btcHoldings / filedBtc - 1) : null;
     return {
         marketCap, btcValue,
         mnav: marketCap / btcValue,
@@ -123,6 +146,7 @@ function computeMnav(companyKey, btcPrice, asOfTs) {
         sharesAsOfDate: sh.asOf || sh.end,
         sharesPeriod: sh.end,
         sharesClasses: sh.classes?.length || 1,
+        stackGrowth,
         btcPerShare: t.btcHoldings / sh.shares,
         costUsd: t.btcCostUsd,
         unrealised: btcValue - t.btcCostUsd,
@@ -352,6 +376,14 @@ function renderAssetView(key) {
                 the true count is <em>higher</em> and mNAV correspondingly higher than
                 shown.
             </p>
+            ${nav.stackGrowth !== null && nav.stackGrowth > 0.05 ? `<p class="accretion-warn">
+                Bitcoin holdings are up <strong>${(nav.stackGrowth * 100).toFixed(0)}%</strong>
+                since that filing, and these companies buy Bitcoin by issuing stock — so
+                shares have almost certainly been issued that this count does not include.
+                The real mNAV is <strong>higher</strong> than ${nav.mnav.toFixed(2)}×, and
+                the gap grows with that percentage. Treat this figure as a floor, not a
+                point estimate.
+            </p>` : ''}
             ${metricInfoHtml('mnav')}
             ${metricInfoHtml('btcPerShare')}` : `<p class="asset-empty">Share count unavailable — mNAV cannot be computed.</p>`}
         </section>` : ''}

@@ -133,6 +133,32 @@ async function fetchHoldingsHistory(cik) {
         .map(x => ({ end: x.end, ts: Date.parse(x.end + 'T00:00:00Z'), btc: x.val, form: x.form }));
 }
 
+// ── Digital assets carrying value (quarterly, from XBRL) ───────────────────
+// Dollar value of the crypto on the balance sheet at each period end. Used to
+// derive an implied coin count for filers that report a value but never tag a
+// unit count (Strive does exactly this), which in turn lets the dashboard tell
+// how much the stack has grown since the share count it is pricing against.
+async function fetchDigitalAssets(cik) {
+    const out = {};
+    for (const tag of ['CryptoAssetFairValueNoncurrent', 'CryptoAssetFairValue',
+                       'IndefiniteLivedIntangibleAssetsExcludingGoodwill']) {
+        const url = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`;
+        const r = await get(url, { 'User-Agent': SEC_UA });
+        if (r.status !== 200) { await sleep(300); continue; }
+        const j = JSON.parse(r.body);
+        for (const rows of Object.values(j.units || {})) {
+            for (const x of rows) {
+                if (x.form !== '10-Q' && x.form !== '10-K') continue;
+                const prev = out[x.end];
+                if (!prev || x.filed > prev.filed) out[x.end] = { val: x.val, filed: x.filed };
+            }
+        }
+        await sleep(300);
+        if (Object.keys(out).length) break;   // first tag that works wins
+    }
+    return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.val]));
+}
+
 // ── Shares outstanding (point-in-time, from filing cover pages) ─────────────
 // The cover page of every 10-Q/10-K states the exact share count as of a date
 // shortly before filing, e.g.:
@@ -292,6 +318,12 @@ for (const c of COMPANIES) {
             ? `, ${holdingsHistory[0].end} → ${holdingsHistory[holdingsHistory.length-1].end}`
             : ' (not tagged in XBRL)'));
 
+    await sleep(800);
+    const filedDigitalAssets = await fetchDigitalAssets(c.cik);
+    const daCount = Object.keys(filedDigitalAssets).length;
+    console.log(`  digital-asset values: ${daCount} quarters`
+        + (daCount ? '' : ' (not tagged)'));
+
     await sleep(1200);
     const shares = adjustSplits(await fetchShares(c.cik), splits[c.ticker]);
     const adj = shares.filter(r => r.splitFactor).length;
@@ -314,6 +346,7 @@ for (const c of COMPANIES) {
         pctOfSupply: hit ? hit.percentage_of_total_supply : null,
         sharesHistory: shares,
         holdingsHistory,
+        filedDigitalAssets,
         prices,
     };
 }
