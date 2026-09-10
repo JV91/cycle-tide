@@ -2,7 +2,9 @@
   "score": 64,
   "band": "ACCUMULATE (Phase 2)",
   "confidence": 100,
-  "price": 78542,
-  "date": "2026-09-09",
+  "staleWeight": 28,
+  "staleNote": "MVRV Z-Score 6d, NUPL 6d, Puell Multiple 6d",
+  "price": 77278,
+  "date": "2026-09-10",
   "previousBand": "ACCUMULATE (Phase 2)"
 }

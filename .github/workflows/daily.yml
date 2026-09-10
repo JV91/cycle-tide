@@ -72,6 +72,7 @@ jobs:
               New band      : ${{ steps.check.outputs.band }}
               Score         : ${{ steps.check.outputs.score }}/100
               Confidence    : ${{ steps.check.outputs.confidence }}% of model weight
+              Stale data    : ${{ steps.check.outputs.staleweight }}% of weight${{ steps.check.outputs.stalenote && format(' — {0}', steps.check.outputs.stalenote) || ' — none' }}
               BTC price     : $${{ steps.check.outputs.price }}
 
             https://jv91.github.io/cycle-tide/
