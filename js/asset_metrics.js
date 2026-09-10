@@ -149,6 +149,21 @@ const ASSET_METRIC_INFO = {
         source: 'Market cap from Yahoo price x shares outstanding (all classes) from the SEC 10-Q/10-K cover page, split-adjusted; BTC value from CoinGecko holdings x live BTC price.',
     },
 
+    satsPerShare: {
+        label: 'satoshis per share growth',
+        tracks: 'How fast the Bitcoin behind one share is growing, annualised. The level tells you what you own today; the rate tells you what holding it does for you over years.',
+        why: 'Decomposing the share price into its four arithmetic drivers \u2014 the mNAV multiple, the Bitcoin price, stack growth and dilution \u2014 and measuring each over rolling windows shows the multiple dominating the short run and fading fast: 48% of the move over one month, 28% over a year, under 18% over two. Stack growth net of dilution moves the other way, from 13% to 59%. Those two are the same quantity seen from both sides, and that quantity is satoshis per share. Over a multi-year hold it is the main thing you are buying.',
+        scale: [
+            ['above +30%/yr', 'compounding hard', 'good'],
+            ['+10% to +30%/yr', 'growing steadily', 'good'],
+            ['0% to +10%/yr', 'barely growing', 'warn'],
+            ['negative', 'shrinking \u2014 issuance outpacing accumulation', 'bad'],
+        ],
+        interacts: 'Governed by mNAV, which is why both cards belong together. Issuing stock above 1.0x buys more Bitcoin than it dilutes and pushes this number up; below 1.0x it destroys BTC per share. So the multiple is not really a return driver \u2014 it is the switch that decides whether the return driver still works. Read the rate first, then check mNAV to see whether the company can keep it up.',
+        caveat: 'Computed between filed quarters, so it reacts a quarter late and the newest figure can be revised. It also says nothing about how the growth was financed: stack growth funded by debt raises satoshis per share while adding claims that sit ahead of you, so read it against the treasury-health factor rather than alone. A single strong quarter is not a trend \u2014 MSTR ran -2.8%/yr through 2023 before +55.8%/yr in 2024.',
+        source: 'CoinGecko/SEC XBRL holdings per quarter \u00f7 shares outstanding from the matching 10-Q/10-K cover page, split-adjusted.',
+    },
+
     btcPerShare: {
         label: 'BTC per share',
         tracks: 'How much Bitcoin one share represents. The cleanest measure of whether management is creating or destroying value for existing holders.',

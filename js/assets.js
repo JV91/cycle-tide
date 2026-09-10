@@ -358,6 +358,8 @@ function renderAssetView(key) {
 
         ${renderMnavHistory(key, nav ? nav.mnav : null)}
 
+        ${renderAccretion(key, nav ? nav.mnav : null)}
+
         ${nav ? renderAssetProjection(key, {
             holdings: t.btcHoldings,
             shares: nav.shares,

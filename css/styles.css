@@ -1386,3 +1386,61 @@ body {
     padding: 1px 5px;
     border-radius: 4px;
 }
+
+
+/* ── Satoshis per share — growth ──────────────────────────────────────────── */
+.accretion-hero {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.accretion-main { text-align: center; }
+.accretion-value {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+}
+.accretion-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.accretion-read {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 10px;
+}
+/* The multiple gates the rate, so this warning carries real weight — give it
+   the same treatment as the stale-data notice rather than burying it in prose. */
+.accretion-warn {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    background: var(--warning-bg);
+    border-left: 2px solid var(--warning);
+    padding: 9px 12px;
+    border-radius: 3px;
+    margin: 0 0 12px;
+}
+.accretion-note {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin: 0 0 12px;
+}
+.accretion-value.tone-good { color: var(--good); }
+.accretion-value.tone-warn { color: var(--warning); }
+.accretion-value.tone-bad  { color: var(--critical); }
+.accretion-read.tone-good  { color: var(--good); }
+.accretion-read.tone-warn  { color: var(--warning); }
+.accretion-read.tone-bad   { color: var(--critical); }
+
+@media (max-width: 560px) {
+    .accretion-hero { grid-template-columns: 1fr; gap: 10px; }
+    .accretion-value { font-size: 22px; }
+}
