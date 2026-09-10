@@ -42,14 +42,22 @@ async function loadAssetData() {
 // Shares outstanding as of a date, from the quarterly SEC series. Uses the
 // most recent filing at or before the date — never interpolates, because
 // share issuance is lumpy and a smoothed number would be fiction.
+// Rows carry two dates: `end` (the reporting period) and `asOf` (the cover-page
+// date the share count is actually true for, typically a few weeks later). We
+// select on `asOf`, because using a count before it was true back-dates recent
+// issuance into a period where those shares did not yet exist — which
+// understates historical mNAV exactly where these companies issue hardest.
 function sharesAsOf(companyKey, ts) {
     const hist = TREASURIES?.[companyKey]?.sharesHistory;
     if (!hist?.length) return null;
+    const keyTs = row => (row.asOf ? Date.parse(row.asOf + 'T00:00:00Z') : row.ts);
     let out = null;
-    for (const row of hist) {
-        if (row.ts <= ts) out = row; else break;
+    for (const row of [...hist].sort((a, b) => keyTs(a) - keyTs(b))) {
+        if (keyTs(row) <= ts) out = row; else break;
     }
-    return out;
+    // Before the first cover date there is no true count; fall back to the
+    // earliest rather than returning null and blanking the whole panel.
+    return out || hist[0];
 }
 
 // Price history from the treasury pivot onward. Everything the dashboard
@@ -112,7 +120,9 @@ function computeMnav(companyKey, btcPrice, asOfTs) {
         marketCap, btcValue,
         mnav: marketCap / btcValue,
         shares: sh.shares,
-        sharesAsOfDate: sh.end,
+        sharesAsOfDate: sh.asOf || sh.end,
+        sharesPeriod: sh.end,
+        sharesClasses: sh.classes?.length || 1,
         btcPerShare: t.btcHoldings / sh.shares,
         costUsd: t.btcCostUsd,
         unrealised: btcValue - t.btcCostUsd,
@@ -325,7 +335,7 @@ function renderAssetView(key) {
             </div>
             <dl class="stat-list">
                 <div class="stat-row"><dt>Market cap</dt><dd>${fmtBig(nav.marketCap)}</dd></div>
-                <div class="stat-row"><dt>Diluted shares</dt>
+                <div class="stat-row"><dt>Shares outstanding</dt>
                     <dd>${(nav.shares / 1e6).toFixed(1)}M</dd></div>
                 <div class="stat-row"><dt>BTC per share</dt>
                     <dd>${nav.btcPerShare.toFixed(6)}</dd></div>
@@ -333,10 +343,14 @@ function renderAssetView(key) {
                     <dd>${btcPrice ? fmtEq(nav.btcPerShare * btcPrice) : '—'}</dd></div>
             </dl>
             <p class="asset-note">
-                Share count is diluted, from the latest SEC filing
-                (${nav.sharesAsOfDate}) — quarterly, so it lags recent issuance.
-                These companies issue stock frequently to buy Bitcoin, so mNAV
-                is indicative rather than precise between filings.
+                Share count is ${nav.sharesClasses > 1 ? 'all share classes' : 'shares'}
+                outstanding as of ${nav.sharesAsOfDate}, read from the cover page of the
+                latest SEC filing (period ending ${nav.sharesPeriod}). It counts shares
+                that exist — not a fully-diluted figure, so it excludes unconverted
+                notes, preferred and unvested awards. Filings are quarterly and these
+                companies issue stock continuously to buy Bitcoin, so between filings
+                the true count is <em>higher</em> and mNAV correspondingly higher than
+                shown.
             </p>
             ${metricInfoHtml('mnav')}
             ${metricInfoHtml('btcPerShare')}` : `<p class="asset-empty">Share count unavailable — mNAV cannot be computed.</p>`}

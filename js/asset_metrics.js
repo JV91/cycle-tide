@@ -145,8 +145,8 @@ const ASSET_METRIC_INFO = {
             ['above 2.0x', 'steep premium — much to justify', 'bad'],
         ],
         interacts: 'A premium is what lets these companies issue shares and buy more Bitcoin per share — issuing above mNAV 1.0x is accretive. At a discount the mechanism reverses: issuing stock destroys BTC per share, so the flywheel that justifies the whole model stops turning. Read mNAV together with BTC per share to see which regime the company is in.',
-        caveat: 'Computed from quarterly SEC share counts, so it lags recent issuance. It also ignores debt, convertibles and any operating business — a leveraged company at 1.0x is not the same risk as an unleveraged one.',
-        source: 'Market cap from Yahoo price x SEC diluted shares; BTC value from CoinGecko holdings x live BTC price.',
+        caveat: 'This is EQUITY mNAV: market cap over BTC value. It deliberately ignores debt and preferred stock, so it is not comparable to the mNAV a company publishes about itself — Strategy quotes an enterprise-value figure that adds roughly $21B of debt and preferred on top of the equity, which is why its number reads above 1.0x while this one reads below. Neither is wrong; they answer different questions. Equity mNAV asks what you pay for the coins, EV mNAV asks what the whole capital structure is priced at. Use this one to compare against buying spot, and remember the debt is still ahead of you in a wind-up. Share counts are quarterly and exclude unconverted notes, preferred and unvested awards, so between filings the true count is higher and real mNAV slightly higher than shown.',
+        source: 'Market cap from Yahoo price x shares outstanding (all classes) from the SEC 10-Q/10-K cover page, split-adjusted; BTC value from CoinGecko holdings x live BTC price.',
     },
 
     btcPerShare: {
@@ -159,8 +159,8 @@ const ASSET_METRIC_INFO = {
             ['falling', 'dilutive — holders lose BTC per share', 'bad'],
         ],
         interacts: 'Directly coupled to mNAV. Issuing shares at a premium raises BTC per share; issuing at a discount lowers it. Compare against total BTC held: if holdings rise while BTC per share falls, the growth came out of your ownership stake rather than out of strategy.',
-        caveat: 'Uses quarterly diluted share counts, so recent issuance may not be reflected. Diluted includes convertibles, which is conservative and appropriate — but means the figure can look worse than a basic share count would suggest.',
-        source: 'CoinGecko holdings / SEC diluted shares outstanding.',
+        caveat: 'Uses quarterly share counts from SEC cover pages, so issuance since the last filing is not reflected — BTC per share shown here is the optimistic end. It counts shares that exist, not fully-diluted: unconverted notes, preferred and unvested awards would all reduce it further if exercised.',
+        source: 'CoinGecko holdings / shares outstanding (all classes) from the SEC 10-Q/10-K cover page, split-adjusted.',
     },
 
     costBasis: {

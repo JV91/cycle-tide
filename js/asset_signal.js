@@ -241,9 +241,17 @@ function historicalMnav(companyKey) {
         return null;
     };
 
+    // Share rows are keyed by cover date (weeks AFTER the period they report),
+    // so asking sharesAsOf for the quarter-end timestamp returns the PREVIOUS
+    // quarter's count. For serial issuers that is a large, one-sided error, so
+    // match the row reporting this same period directly and only fall back to
+    // the as-of walk when no such row exists.
+    const shareByEnd = new Map(
+        (t.sharesHistory || []).map(r => [r.end, r]));
+
     const points = [];
     for (const h of hist) {
-        const sh = sharesAsOf(companyKey, h.ts);
+        const sh = shareByEnd.get(h.end) || sharesAsOf(companyKey, h.ts);
         const equityPx = near(pxMap, h.end);
         const btcPx = near(btcMap, h.end);
         if (!sh || !equityPx || !btcPx || !h.btc) continue;
@@ -311,7 +319,7 @@ function renderMnavHistory(companyKey, currentMnav) {
         </p>
         <div class="table-wrap">
             <table class="backtest-table">
-                <thead><tr><th>Quarter end</th><th>BTC held</th><th>Diluted shares</th><th>mNAV</th></tr></thead>
+                <thead><tr><th>Quarter end</th><th>BTC held</th><th>Shares outstanding</th><th>mNAV</th></tr></thead>
                 <tbody>
                     ${h.points.map(p => `
                         <tr>
