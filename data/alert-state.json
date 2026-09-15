@@ -1,10 +1,10 @@
 {
-  "score": 66,
+  "score": 64,
   "band": "ACCUMULATE (Phase 2)",
   "confidence": 100,
   "staleWeight": 28,
-  "staleNote": "MVRV Z-Score 7d, NUPL 7d, Puell Multiple 7d",
-  "price": 77284,
-  "date": "2026-09-11",
+  "staleNote": "MVRV Z-Score 7d, NUPL 7d, Puell Multiple 11d",
+  "price": 76874,
+  "date": "2026-09-15",
   "previousBand": "ACCUMULATE (Phase 2)"
 }

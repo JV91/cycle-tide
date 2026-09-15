@@ -48,19 +48,68 @@ const { SIGNAL_DEFS, TOTAL_WEIGHT, CATEGORY_LABELS } =
     loadModule('constants.js', ['SIGNAL_DEFS', 'TOTAL_WEIGHT', 'CATEGORY_LABELS']);
 
 // ── data ────────────────────────────────────────────────────────────────────
-const all = [];
-let endTime = null;
-for (let i = 0; i < 12; i++) {
-    const r = await get('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1000'
-        + (endTime ? '&endTime=' + endTime : ''));
-    const b = JSON.parse(r.body);
-    if (!b.length) break;
-    all.push(...b);
-    endTime = b[0][0] - 1;
-    if (b.length < 1000) break;
+// Binance geo-blocks US IPs with HTTP 451, and GitHub's hosted runners are in
+// the US. The 451 body is valid JSON ({"code":0,"msg":"...restricted
+// location..."}) so JSON.parse succeeds, `b.length` is undefined, the loop
+// breaks, and `daily` ends up empty — the script then died on
+// `daily[daily.length - 1].close`. Because the commit step runs AFTER this one,
+// a hard throw here meant the freshly fetched snapshots were never committed:
+// every scheduled run from 2026-09-12 onward refreshed the data and then threw
+// it away, leaving the deployed site five days stale while the workflow looked
+// like it was running.
+//
+// Fall back to a mirror, and treat a non-array response as the failure it is
+// rather than as an empty page.
+const KLINE_HOSTS = [
+    'https://api.binance.com',
+    'https://data-api.binance.vision',   // same data, not geo-restricted
+];
+
+async function fetchKlines() {
+    for (const host of KLINE_HOSTS) {
+        const rows = [];
+        let endTime = null, ok = true;
+        for (let i = 0; i < 12; i++) {
+            let b;
+            try {
+                const r = await get(host + '/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1000'
+                    + (endTime ? '&endTime=' + endTime : ''));
+                b = JSON.parse(r.body);
+            } catch { ok = false; break; }
+            if (!Array.isArray(b)) {            // 451 / error object, not a page of bars
+                ok = false;
+                console.log(`  ${host}: ${b?.msg ? String(b.msg).slice(0, 80) : 'unexpected response'}`);
+                break;
+            }
+            if (!b.length) break;
+            rows.push(...b);
+            endTime = b[0][0] - 1;
+            if (b.length < 1000) break;
+        }
+        if (ok && rows.length) {
+            if (host !== KLINE_HOSTS[0]) console.log(`  price history via ${host}`);
+            return rows;
+        }
+    }
+    return [];
 }
+
+const all = await fetchKlines();
 const daily = all.map(k => ({ ts: k[0], close: +k[4], high: +k[2] }))
     .filter(p => p.close > 0).sort((a, b) => a.ts - b.ts);
+
+// No price history means no score. Exit 0 so the workflow still commits the
+// on-chain/ETF/treasury snapshots that were fetched successfully before this
+// step — a missing alert is a far smaller problem than a site frozen on stale
+// data, which is exactly what the previous behaviour caused.
+if (!daily.length) {
+    console.log('No BTC price history available from any source — skipping scoring.');
+    console.log('Snapshots fetched by earlier steps are unaffected and will still be committed.');
+    if (process.env.GITHUB_OUTPUT) {
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changed=false\nskipped=true\n');
+    }
+    process.exit(0);
+}
 
 const snap = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'onchain.json'), 'utf8')).series;
 const etf = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'etf-flows.json'), 'utf8')).series;
