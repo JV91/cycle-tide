@@ -117,9 +117,42 @@ const etf = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'etf-flows.json')
 const fg = await get('https://api.alternative.me/fng/?limit=400')
     .then(r => JSON.parse(r.body).data.map(d => ({ ts: +d.timestamp * 1000, value: +d.value }))
         .sort((a, b) => a.ts - b.ts)).catch(() => []);
-const fund = await get('https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000')
-    .then(r => JSON.parse(r.body).map(x => ({ ts: x.fundingTime, value: +x.fundingRate }))
-        .sort((a, b) => a.ts - b.ts)).catch(() => []);
+// Perp funding is 7% of model weight and comes from Binance FUTURES, which is
+// geo-blocked from US IPs exactly like the spot endpoint — data-api.binance.vision
+// mirrors spot only (404 on /fapi/*). On the runners this silently returned []
+// every night, dropping confidence to 93%; that is below the 100% the band logic
+// wanted and the daily alert degraded to "NO CALL" while reading fine locally.
+//
+// Bybit publishes the same BTCUSDT perp funding and is not geo-restricted, so it
+// backs the primary up. Both are 8h-settled USDT perps on the same underlying;
+// the rates agree to the published precision.
+async function fetchFunding() {
+    const binance = await get('https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000')
+        .then(r => {
+            const j = JSON.parse(r.body);
+            if (!Array.isArray(j)) throw new Error(j?.msg || 'unexpected response');
+            return j.map(x => ({ ts: x.fundingTime, value: +x.fundingRate }));
+        })
+        .catch(() => null);
+    if (binance?.length) return binance.sort((a, b) => a.ts - b.ts);
+
+    const bybit = await get('https://api.bybit.com/v5/market/funding/history'
+                          + '?category=linear&symbol=BTCUSDT&limit=200')
+        .then(r => {
+            const j = JSON.parse(r.body);
+            return (j?.result?.list || []).map(x => ({
+                ts: +x.fundingRateTimestamp, value: +x.fundingRate,
+            }));
+        })
+        .catch(() => null);
+    if (bybit?.length) {
+        console.log('  funding via Bybit (Binance futures unreachable)');
+        return bybit.sort((a, b) => a.ts - b.ts);
+    }
+    console.log('  ! funding unavailable from both sources');
+    return [];
+}
+const fund = await fetchFunding();
 const stable = await get('https://stablecoins.llama.fi/stablecoincharts/all')
     .then(r => JSON.parse(r.body).map(x => ({ ts: +x.date * 1000, value: x.totalCirculatingUSD?.peggedUSD }))
         .filter(x => x.value > 0)).catch(() => []);

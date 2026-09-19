@@ -285,6 +285,34 @@ function adjustSplits(rows, events) {
     });
 }
 
+// Never let a refresh REPLACE good data with staler data.
+//
+// Yahoo publishes the daily bar late: at ~00:50 UTC the session that closed
+// ~4.5h earlier is still missing from the chart endpoint. The workflow runs
+// twice (20:30 and ~00:50 UTC), so the late run was fetching a SHORTER series
+// than the early one had already committed and overwriting it — every single
+// day the site lost the most recent close and went two sessions stale:
+//
+//     09-18 20:27 UTC  last bar 09-18   <- correct
+//     09-19 00:47 UTC  last bar 09-17   <- overwrote it, one session lost
+//
+// MSTR closed +16% on 09-18, so this was showing 132.25 instead of 153.92 and
+// mNAV was wrong by the same proportion. Merging by timestamp makes a refresh
+// monotonic: it can add bars and correct existing ones, never remove them.
+function mergePrices(existing, fresh) {
+    if (!existing?.length) return fresh;
+    if (!fresh?.length) return existing;
+    const byTs = new Map(existing.map(p => [p.ts, p]));
+    for (const p of fresh) byTs.set(p.ts, p);   // fresh wins on a shared bar
+    return [...byTs.values()].sort((a, b) => a.ts - b.ts);
+}
+
+// Whatever is already on disk, so a partial fetch can fall back to it.
+let PREVIOUS = {};
+try {
+    PREVIOUS = JSON.parse(fs.readFileSync(OUT, 'utf8')).companies || {};
+} catch { /* first run */ }
+
 console.log('Fetching BTC treasury holdings…');
 const holdings = await fetchHoldings();
 
@@ -302,13 +330,21 @@ for (const c of COMPANIES) {
 
     await sleep(800);
     let prices = [];
+    const prior = PREVIOUS[c.key]?.prices || [];
     try {
-        prices = await fetchEquity(c.ticker);
+        const fetched = await fetchEquity(c.ticker);
+        prices = mergePrices(prior, fetched);
         const lastPx = prices[prices.length - 1];
+        const lastFetched = fetched[fetched.length - 1];
         console.log(`  prices: ${prices.length} days, latest `
             + `${new Date(lastPx.ts).toISOString().slice(0, 10)} = $${lastPx.close}`);
+        if (lastFetched && lastFetched.ts < lastPx.ts) {
+            console.log(`    (upstream only had through `
+                + `${new Date(lastFetched.ts).toISOString().slice(0, 10)}; kept the newer bar we already had)`);
+        }
     } catch (e) {
-        console.log('  ! price fetch failed:', e.message);
+        console.log('  ! price fetch failed:', e.message, '— keeping', prior.length, 'existing bars');
+        prices = prior;
     }
 
     await sleep(1200);
