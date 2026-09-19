@@ -146,6 +146,7 @@ function computeMnav(companyKey, btcPrice, asOfTs) {
         sharesAsOfDate: sh.asOf || sh.end,
         sharesPeriod: sh.end,
         sharesClasses: sh.classes?.length || 1,
+        sharesSource: sh.form === 'issuer' ? 'issuer' : 'filing',
         stackGrowth,
         btcPerShare: t.btcHoldings / sh.shares,
         costUsd: t.btcCostUsd,
@@ -367,6 +368,14 @@ function renderAssetView(key) {
                     <dd>${btcPrice ? fmtEq(nav.btcPerShare * btcPrice) : '—'}</dd></div>
             </dl>
             <p class="asset-note">
+                ${nav.sharesSource === 'issuer' ? `
+                Share count is the current figure published by the company itself
+                (${nav.sharesAsOfDate}), derived from its own market cap and share
+                price — so it already includes stock issued since the last filing.
+                It counts shares that exist, not a fully-diluted figure: the
+                company's own fully-diluted number is about 2% higher again because
+                it assumes conversion of notes, preferred and unvested awards.`
+                : `
                 Share count is ${nav.sharesClasses > 1 ? 'all share classes' : 'shares'}
                 outstanding as of ${nav.sharesAsOfDate}, read from the cover page of the
                 latest SEC filing (period ending ${nav.sharesPeriod}). It counts shares
@@ -374,9 +383,9 @@ function renderAssetView(key) {
                 notes, preferred and unvested awards. Filings are quarterly and these
                 companies issue stock continuously to buy Bitcoin, so between filings
                 the true count is <em>higher</em> and mNAV correspondingly higher than
-                shown.
+                shown.`}
             </p>
-            ${nav.stackGrowth !== null && nav.stackGrowth > 0.05 ? `<p class="accretion-warn">
+            ${nav.sharesSource === 'filing' && nav.stackGrowth !== null && nav.stackGrowth > 0.05 ? `<p class="accretion-warn">
                 Bitcoin holdings are up <strong>${(nav.stackGrowth * 100).toFixed(0)}%</strong>
                 since that filing, and these companies buy Bitcoin by issuing stock — so
                 shares have almost certainly been issued that this count does not include.

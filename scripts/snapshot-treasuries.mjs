@@ -133,6 +133,41 @@ async function fetchHoldingsHistory(cik) {
         .map(x => ({ end: x.end, ts: Date.parse(x.end + 'T00:00:00Z'), btc: x.val, form: x.form }));
 }
 
+// ── Current share count, straight from the issuer ───────────────────────
+// SEC cover pages are authoritative but QUARTERLY, and these companies issue
+// stock continuously through an ATM. By 2026-09 MSTR's last filed count
+// (384.2M, as of 2026-07-24) was ~9% below the count implied by its own live
+// market cap (420.5M) — so our mNAV read 0.86x where Strategy published 0.94x.
+// Almost the entire gap was the stale share count, not a difference in method.
+//
+// Strategy powers its own charts from api.strategy.com, which exposes both a
+// live market cap and a fully-diluted count. We take the count implied by
+// marketCap/price rather than `fdso`: fdso (429.8M) assumes conversion of
+// converts, preferreds and unvested awards, which is a different measure and
+// would overstate shares that actually exist today by ~12%.
+//
+// Only MSTR is covered — the endpoint serves the MSTR family (STRK/STRF/STRD/
+// STRC) plus benchmark tickers, not ASST — so Strive keeps the filing-based
+// count and its existing "holdings have outgrown the share count" warning.
+async function fetchIssuerShares(ticker) {
+    if (ticker !== 'MSTR') return null;
+    try {
+        const r = await get('https://api.strategy.com/btc/kpiData');
+        if (r.status !== 200) return null;
+        const rows = Object.values(JSON.parse(r.body) || {});
+        const m = rows.find(x => x && x.company === 'MSTR');
+        // marketCap is in millions; ufPrice is the unformatted close.
+        if (!m?.marketCap || !m?.ufPrice) return null;
+        const shares = Math.round((m.marketCap * 1e6) / m.ufPrice);
+        if (!Number.isFinite(shares) || shares <= 0) return null;
+        return {
+            shares,
+            price: m.ufPrice,
+            asOf: (m.timeStampUtc || '').slice(0, 10) || null,
+        };
+    } catch { return null; }
+}
+
 // ── Digital assets carrying value (quarterly, from XBRL) ───────────────────
 // Dollar value of the crypto on the balance sheet at each period end. Used to
 // derive an implied coin count for filers that report a value but never tag a
@@ -362,6 +397,24 @@ for (const c of COMPANIES) {
 
     await sleep(1200);
     const shares = adjustSplits(await fetchShares(c.cik), splits[c.ticker]);
+
+    // Append the issuer's live count as an extra, newer row so sharesAsOf()
+    // picks it up for today while the filed quarters still drive history.
+    const issuer = await fetchIssuerShares(c.ticker);
+    if (issuer && issuer.asOf) {
+        const filedLatest = shares[shares.length - 1];
+        const pct = filedLatest ? (issuer.shares / filedLatest.shares - 1) * 100 : 0;
+        console.log(`  issuer share count: ${(issuer.shares / 1e6).toFixed(1)}M as of `
+            + `${issuer.asOf} (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs last filing)`);
+        shares.push({
+            end: issuer.asOf,
+            ts: Date.parse(issuer.asOf + 'T00:00:00Z'),
+            shares: issuer.shares,
+            asOf: issuer.asOf,
+            classes: [issuer.shares],
+            form: 'issuer',
+        });
+    }
     const adj = shares.filter(r => r.splitFactor).length;
     if (adj) console.log(`  split-adjusted ${adj} pre-split share rows`
         + ` (${(splits[c.ticker] || []).map(e => new Date(e.ts).toISOString().slice(0, 10)
