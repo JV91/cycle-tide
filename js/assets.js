@@ -114,6 +114,35 @@ function computeMnav(companyKey, btcPrice, asOfTs) {
     const sh = sharesAsOf(companyKey, asOfTs ?? last.ts);
     if (!sh) return null;
 
+    // The issuer publishes its own live figures (see js/issuer.js). They are
+    // strictly better than anything we reconstruct — current share count, the
+    // company's own senior-claim arithmetic — but only for TODAY, so historical
+    // dates still go through the filing-derived path below.
+    const iss = ISSUER[companyKey];
+    const viewingLatest = !asOfTs || asOfTs >= last.ts;
+    if (iss && viewingLatest) {
+        return {
+            marketCap: iss.marketCap,
+            btcValue: iss.btcHoldings * btcPrice,
+            mnav: iss.marketCap / (iss.btcHoldings * btcPrice),
+            mnavNet: iss.mnavPublished,
+            netBtcPerShareUsd: iss.netBtcPerShareUsd,
+            satsPerShare: iss.satsPerShare,
+            netSatsPerShare: iss.netSatsPerShare,
+            seniorClaims: (iss.debt || 0) + (iss.pref || 0),
+            shares: iss.shares,
+            sharesAsOfDate: (iss.asOf || '').slice(0, 10),
+            sharesPeriod: (iss.asOf || '').slice(0, 10),
+            sharesClasses: 1,
+            sharesSource: 'issuer-live',
+            stackGrowth: null,
+            btcPerShare: iss.btcHoldings / iss.shares,
+            costUsd: t.btcCostUsd,
+            unrealised: iss.btcHoldings * btcPrice - t.btcCostUsd,
+            unrealisedPct: (iss.btcHoldings * btcPrice - t.btcCostUsd) / t.btcCostUsd,
+        };
+    }
+
     const marketCap = last.close * sh.shares;
     const btcValue  = t.btcHoldings * btcPrice;
 
@@ -357,6 +386,13 @@ function renderAssetView(key) {
                 <p class="mnav-read">${nav.mnav < 1
                     ? `Trading at a <strong>${((1 - nav.mnav) * 100).toFixed(0)}% discount</strong> to the Bitcoin it holds.`
                     : `Trading at a <strong>${((nav.mnav - 1) * 100).toFixed(0)}% premium</strong> to the Bitcoin it holds.`}</p>
+                ${nav.mnavNet ? `<p class="mnav-net">
+                    <strong>${nav.mnavNet.toFixed(2)}\u00d7</strong> after senior claims \u2014 the figure
+                    ${escapeHtml(TREASURIES?.[key]?.name || 'the company')} publishes. Debt and preferred
+                    are subtracted from the reserve first, so this is what you pay per dollar of Bitcoin
+                    that is actually <em>yours</em>; ${nav.mnav.toFixed(2)}\u00d7 above is per dollar the
+                    company merely holds.
+                </p>` : ''}
             </div>
             <dl class="stat-list">
                 <div class="stat-row"><dt>Market cap</dt><dd>${fmtBig(nav.marketCap)}</dd></div>
@@ -368,7 +404,12 @@ function renderAssetView(key) {
                     <dd>${btcPrice ? fmtEq(nav.btcPerShare * btcPrice) : '—'}</dd></div>
             </dl>
             <p class="asset-note">
-                ${nav.sharesSource === 'issuer' ? `
+                ${nav.sharesSource === 'issuer-live' ? `
+                Figures are read live from the company's own published data
+                (${nav.sharesAsOfDate}): share count, market cap, debt and preferred all
+                come from the issuer rather than being reconstructed from quarterly
+                filings, so nothing here goes stale between filings.`
+                : nav.sharesSource === 'issuer' ? `
                 Share count is the current figure published by the company itself
                 (${nav.sharesAsOfDate}), derived from its own market cap and share
                 price — so it already includes stock issued since the last filing.

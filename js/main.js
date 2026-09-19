@@ -25,6 +25,10 @@ async function loadAllSignals() {
             fetchFundingRate(),
             fetchEtfFlows(),
         ]);
+
+    // Issuer-published live figures (MSTR). Deliberately not in the Promise.all
+    // above: it is not a signal input and must never be able to fail the load.
+    await fetchIssuerFigures();
     const { mvrv, nupl, puell } = onchain;
 
     if (!daily || !daily.length) {

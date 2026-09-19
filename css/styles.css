@@ -1444,3 +1444,17 @@ body {
     .accretion-hero { grid-template-columns: 1fr; gap: 10px; }
     .accretion-value { font-size: 22px; }
 }
+
+/* The company's own mNAV definition, shown beside our gross one. Both are
+   real; they answer different questions, so neither is allowed to hide. */
+.mnav-net {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    background: var(--warning-bg);
+    border-left: 2px solid var(--warning);
+    padding: 9px 12px;
+    border-radius: 3px;
+    margin: 10px 0 0;
+}
+.mnav-net strong { color: var(--text-primary); }
