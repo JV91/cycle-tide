@@ -1463,3 +1463,85 @@ body {
    are never read as the same kind of claim. */
 .proj-item.proj-observed { border-left: 2px solid var(--good); padding-left: 10px; }
 .proj-item.proj-observed .proj-range { color: var(--good); }
+
+/* ── Collapsible allocation card ──────────────────────────────────── */
+/* The header is a real button: it is the control, so it has to look and behave
+   like one (pointer, hover, visible focus ring, full-width hit area). */
+.alloc-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+    margin: 0 0 14px;
+    background: none;
+    border: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+}
+.alloc-head .card-title { margin: 0; }
+.alloc-head:hover .card-title { color: var(--text-primary); }
+.alloc-head:focus-visible {
+    outline: 2px solid var(--good);
+    outline-offset: 3px;
+    border-radius: 3px;
+}
+.alloc-head .disclosure {
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1;
+}
+/* The summary carries the decision when the body is hidden, so it must stay
+   legible — it truncates rather than wrapping the header onto two lines. */
+.alloc-summary {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.alloc-sep { color: var(--text-muted); }
+.alloc-collapsed { margin-bottom: 14px; }
+
+/* At phone width the summary drops under the title instead of competing with
+   it for a track that cannot hold both. */
+@media (max-width: 720px) {
+    .alloc-head { flex-wrap: wrap; }
+    .alloc-summary {
+        margin-left: 0;
+        flex-basis: 100%;
+        white-space: normal;
+    }
+}
+
+/* ── Usability pass ──────────────────────────────────────────── */
+/* Everything clickable should look clickable. Several controls read as static
+   text until you happen to hover them. */
+.breakdown-toggle,
+.metric-toggle,
+.backtest-table tbody tr {
+    cursor: pointer;
+}
+.breakdown-toggle:focus-visible,
+.metric-toggle:focus-visible,
+.date-nav:focus-visible,
+.refresh-btn:focus-visible {
+    outline: 2px solid var(--good);
+    outline-offset: 2px;
+}
+/* Backtest rows load a date on click — make that discoverable. */
+.backtest-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+/* Figures that sit in columns should line up. */
+.stat-list dd,
+.backtest-table td,
+.alloc-compare td,
+.accretion-value { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

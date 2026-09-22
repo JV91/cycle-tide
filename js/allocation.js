@@ -95,9 +95,30 @@ function renderAllocation() {
     const age = a.age;
     const stale = age && age.sessionsBehind >= 1;
 
+    // Collapsed by default is wrong — this is the card that answers "what do I
+    // buy this month". But at 505px it pushed the score gauge and the cycle
+    // chart entirely below the fold on a 900px screen, so it can be folded down
+    // to a one-line summary that still carries the decision. The choice is
+    // remembered per browser; a failure to read it just means "expanded".
+    let collapsed = false;
+    try { collapsed = localStorage.getItem('cycletide_alloc_collapsed') === '1'; } catch {}
+
+    // The summary has to stand alone when the body is hidden: amount, ticker,
+    // and the mNAV that justified it.
+    const summary = worthIt
+        ? `${P.currency} ${P.treasury.toLocaleString()} \u2192 ${escapeHtml(best.ticker)} at ${best.mnav.toFixed(2)}\u00d7 mNAV`
+        : `${P.currency} ${P.treasury.toLocaleString()} \u2192 spot \u2014 no wrapper below 0.95\u00d7`;
+
     host.innerHTML = `
-    <section class="card alloc-card">
-        <h2 class="card-title">THIS MONTH'S ALLOCATION</h2>
+    <section class="card alloc-card${collapsed ? ' alloc-collapsed' : ''}">
+        <button class="alloc-head" id="allocToggle" aria-expanded="${!collapsed}"
+                aria-controls="allocBody" title="${collapsed ? 'Show' : 'Hide'} allocation detail">
+            <span class="disclosure" aria-hidden="true">${collapsed ? '\u25b8' : '\u25be'}</span>
+            <span class="card-title">THIS MONTH'S ALLOCATION</span>
+            <span class="alloc-summary">${P.currency} ${P.btc.toLocaleString()} \u2192 BTC
+                <span class="alloc-sep">\u00b7</span> ${summary}</span>
+        </button>
+        <div id="allocBody" class="alloc-body"${collapsed ? ' hidden' : ''}>
         ${stale ? `<p class="alloc-stale">
             Equity prices are from ${new Date(age.ts).toISOString().slice(0, 10)},
             ${age.sessionsBehind} trading session${age.sessionsBehind === 1 ? '' : 's'} behind.
@@ -152,7 +173,14 @@ function renderAllocation() {
             dilution and single-company risk while buying no extra Bitcoin.
         </p>
         ${metricInfoHtml('allocation')}
+        </div>
     </section>`;
+
+    document.getElementById('allocToggle')?.addEventListener('click', () => {
+        const next = !host.querySelector('.alloc-card').classList.contains('alloc-collapsed');
+        try { localStorage.setItem('cycletide_alloc_collapsed', next ? '1' : '0'); } catch {}
+        renderAllocation();
+    });
 
     // The card can render before any tab is opened, so bind here too — the
     // guard inside makes repeat calls harmless.
