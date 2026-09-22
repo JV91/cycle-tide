@@ -1458,3 +1458,8 @@ body {
     margin: 10px 0 0;
 }
 .mnav-net strong { color: var(--text-primary); }
+
+/* An observed turning point, not a projection - visually distinct so the two
+   are never read as the same kind of claim. */
+.proj-item.proj-observed { border-left: 2px solid var(--good); padding-left: 10px; }
+.proj-item.proj-observed .proj-range { color: var(--good); }

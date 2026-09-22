@@ -105,6 +105,16 @@ function renderAccretion(companyKey, currentMnav) {
     const rows = a.points.slice(1).reverse();          // newest first, skip the base
     const rate = a.recentCagr;
 
+    // The quarterly series is the right basis for the RATE — it measures growth
+    // between filings — but its latest LEVEL is stale, because it divides by a
+    // share count from the last 10-Q while the company has kept issuing. In
+    // Sept 2026 that read 220,183 sats/share against the 187,955 the issuer
+    // itself published: a 17% overstatement, in the flattering direction.
+    // Prefer the issuer's live figure for the headline when we have it.
+    const live = ISSUER[companyKey];
+    const headlineSats = live?.satsPerShare ?? a.latest.sats;
+    const headlineStale = !live;
+
     // Below 1.0x mNAV, issuing stock destroys BTC per share. That is the single
     // most important piece of context for reading the rate, so it is stated
     // inline rather than left to the reader to connect.
@@ -123,9 +133,14 @@ function renderAccretion(companyKey, currentMnav) {
 
         <div class="accretion-hero">
             <div class="accretion-main">
-                <div class="accretion-value">${fmtSats(a.latest.sats)}</div>
-                <div class="accretion-label">sats per share</div>
+                <div class="accretion-value">${fmtSats(headlineSats)}</div>
+                <div class="accretion-label">sats per share${headlineStale ? ' (last filing)' : ''}</div>
             </div>
+            ${live?.netSatsPerShare ? `
+            <div class="accretion-main">
+                <div class="accretion-value">${fmtSats(live.netSatsPerShare)}</div>
+                <div class="accretion-label">net of senior claims</div>
+            </div>` : ''}
             <div class="accretion-main">
                 <div class="accretion-value tone-${tone}">${fmtRate(rate)}</div>
                 <div class="accretion-label">latest quarter, annualised</div>
@@ -167,6 +182,10 @@ function renderAccretion(companyKey, currentMnav) {
         </div>
 
         <p class="asset-note">
+            ${live ? `The headline figure is the company's own live number; the table below
+            is computed from filed quarters, so its latest row sits above it — a filing-based
+            count divides by shares as of that filing and ignores issuance since. Use the
+            table for the RATE, the headline for the LEVEL. ` : ''}
             Computed only between filed quarters — holdings are stamped at period
             end and share counts at a cover date some weeks later, so a daily
             series would show sawtooth steps that reflect the filing calendar

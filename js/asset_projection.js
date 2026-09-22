@@ -119,9 +119,9 @@ function assetProjectionScenarios(key, ctx) {
         },
         {
             label: 'Projected cycle bottom',
-            when: new Date(dates.currentBottom.ts).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }),
+            when: new Date(dates.nextHalving.ts).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }),
             btc: A.bottomUSD,
-            years: yearsTo(dates.currentBottom.ts),
+            years: yearsTo(dates.nextHalving.ts),
         },
         {
             label: 'Projected next top',

@@ -202,7 +202,7 @@ function renderScoreChart() {
         .join('');
 
     // Projection uncertainty band around the projected bottom / top
-    const uncertainty = [proj.dates.currentBottom, proj.dates.nextTop]
+    const uncertainty = [proj.dates.nextTop]
         .filter(d => d.loTs && d.hiTs && d.hiTs >= tMin && d.loTs <= tMax)
         .map(d => `<rect x="${x(d.loTs)}" y="${padT}" width="${Math.max(1, x(d.hiTs) - x(d.loTs))}"
                          height="${plotBottom - padT}" class="chart-uncertainty"/>`).join('');
@@ -394,12 +394,11 @@ function renderProjectionNotes(proj, pricePr) {
     const k = v => '$' + Math.round(v / 1000) + 'k';
 
     el.innerHTML = `
-        <div class="proj-item">
-            <span class="proj-label">Projected cycle bottom</span>
-            <span class="proj-value">${fmtD(d.currentBottom.ts)}</span>
-            <span class="proj-range">range ${fmtD(d.currentBottom.loTs)} – ${fmtD(d.currentBottom.hiTs)}</span>
-            ${A ? `<span class="proj-price">~${k(A.bottomUSD)}
-                     <span class="proj-price-band">${k(A.bottomLoUSD)}–${k(A.bottomHiUSD)}</span></span>` : ''}
+        <div class="proj-item proj-observed">
+            <span class="proj-label">Cycle bottom</span>
+            <span class="proj-value">${fmtD(d.cycleLow.ts)}</span>
+            <span class="proj-range">observed, not projected</span>
+            <span class="proj-price">${k(d.cycleLow.usd)}</span>
         </div>
         <div class="proj-item">
             <span class="proj-label">Next halving</span>
@@ -416,30 +415,41 @@ function renderProjectionNotes(proj, pricePr) {
         ${A ? `
         <div class="proj-assumptions">
             <span class="proj-label">Your assumptions</span>
-            <label>Bottom $<input type="number" id="assumeBottom" value="${A.bottomUSD}" step="1000"></label>
             <label>Next top $<input type="number" id="assumeTop" value="${A.nextTopUSD}" step="10000"></label>
             <button id="resetAssume" class="refresh-btn">Reset</button>
         </div>` : ''}
         <p class="proj-basis">
-            <strong>Timing</strong> is projected from past cycles: ${Math.min(...stats.toTop)}–${Math.max(...stats.toTop)}
+            <strong>This cycle's turning points are both observed now.</strong> The high was
+            ${k(d.cycleHigh.usd)} on ${fmtD(d.cycleHigh.ts)}; the low was ${k(d.cycleLow.usd)} on
+            ${fmtD(d.cycleLow.ts)}, and price has since recovered well above it without
+            revisiting. Note this bottom does not match the shape of prior ones — it came
+            268 days after the top against 363–411 historically, and fell 54% against 77–86%
+            — so it is faster and shallower than every previous bear. If that is because the
+            cycle compressed, what follows is a normal advance; if it was an interim low,
+            the projection below is early. Price action currently supports the first reading.
+            <br><br>
+            <strong>Timing</strong> for what is ahead is projected from past cycles:
+            ${Math.min(...stats.toTop)}–${Math.max(...stats.toTop)}
             days halving→top (mean ${Math.round(stats.ttMean)}d),
             ${Math.min(...stats.topToBottom)}–${Math.max(...stats.topToBottom)} days top→bottom
-            (mean ${Math.round(stats.btMean)}d).
-            <strong>Price is not projected by the model at all</strong> — it is the assumption you set above,
-            drawn as a band because cycle magnitude has decayed sharply every cycle
-            (+57,400% → +13,133% → +2,126% → +712%) and three cycles is far too small a
-            sample to extrapolate. Treat the band as "if the next cycle rhymes", not a forecast.
+            (mean ${Math.round(stats.btMean)}d). The 2026 bottom is excluded from that
+            top→bottom average: at 268 days it is a large enough outlier that including it
+            would drag the 2029 projection forward on a single observation.
+            <br><br>
+            <strong>Price is not projected by the model at all</strong> — the forward top is the
+            assumption you set above, drawn as a band because cycle magnitude has decayed
+            sharply every cycle (+57,400% → +13,133% → +2,126% → +712%) and three cycles is
+            far too small a sample to extrapolate. Treat the band as "if the next cycle
+            rhymes", not a forecast.
         </p>
     `;
 
     // Re-render on assumption change (debounced so typing isn't jumpy).
     let t = null;
     const rerender = () => { clearTimeout(t); t = setTimeout(renderScoreChart, 350); };
-    el.querySelector('#assumeBottom')?.addEventListener('input', rerender);
     el.querySelector('#assumeTop')?.addEventListener('input', rerender);
     el.querySelector('#resetAssume')?.addEventListener('click', () => {
-        const b = el.querySelector('#assumeBottom'), tp = el.querySelector('#assumeTop');
-        if (b)  b.value  = PRICE_ASSUMPTIONS.bottomUSD;
+        const tp = el.querySelector('#assumeTop');
         if (tp) tp.value = PRICE_ASSUMPTIONS.nextTopUSD;
         renderScoreChart();
     });
