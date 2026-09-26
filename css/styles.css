@@ -1545,3 +1545,13 @@ body {
 @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* How much of the Bitcoin is claimed before common. Quiet by default — it is
+   context for the two mNAV figures above it, not a third headline. */
+.mnav-claims {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin: 8px 0 0;
+}
+.mnav-claims strong { color: var(--text-primary); }

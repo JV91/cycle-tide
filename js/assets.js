@@ -397,6 +397,11 @@ function renderAssetView(key) {
                 <p class="mnav-read">${nav.mnav < 1
                     ? `Trading at a <strong>${((1 - nav.mnav) * 100).toFixed(0)}% discount</strong> to the Bitcoin it holds.`
                     : `Trading at a <strong>${((nav.mnav - 1) * 100).toFixed(0)}% premium</strong> to the Bitcoin it holds.`}</p>
+                ${nav.seniorClaims && nav.btcValue ? `<p class="mnav-claims">
+                    <strong>${(nav.seniorClaims / nav.btcValue * 100).toFixed(0)}%</strong>
+                    of the Bitcoin is spoken for by debt and preferred before common
+                    shareholders \u2014 ${fmtBig(nav.seniorClaims)} against ${fmtBig(nav.btcValue)}.
+                </p>` : ''}
                 ${nav.mnavNet ? `<p class="mnav-net">
                     <strong>${nav.mnavNet.toFixed(2)}\u00d7</strong> after senior claims \u2014 the figure
                     ${escapeHtml(TREASURIES?.[key]?.name || 'the company')} publishes. Debt and preferred
