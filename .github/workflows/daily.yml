@@ -39,6 +39,13 @@ jobs:
         continue-on-error: true
         run: node scripts/snapshot-treasuries.mjs
 
+      # Strive files an 8-K after every bitcoin purchase (~weekly) with a full
+      # capital-structure table. It is the only current source for ASST, which
+      # has no live API, so it runs on the same cadence as everything else.
+      - name: Refresh Strive capital structure
+        continue-on-error: true
+        run: node scripts/snapshot-asst-8k.mjs
+
       - name: Compute score and detect band change
         id: check
         run: node scripts/check-alerts.mjs

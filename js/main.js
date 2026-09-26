@@ -26,8 +26,9 @@ async function loadAllSignals() {
             fetchEtfFlows(),
         ]);
 
-    // Issuer-published live figures (MSTR). Deliberately not in the Promise.all
-    // above: it is not a signal input and must never be able to fail the load.
+    // Issuer-published live figures (MSTR) and the 8-K capital table (ASST).
+    // Deliberately not in the Promise.all above: neither is a signal input and
+    // neither must ever be able to fail the load.
     await fetchIssuerFigures();
     const { mvrv, nupl, puell } = onchain;
 

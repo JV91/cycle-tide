@@ -91,3 +91,66 @@ async function fetchIssuerFigures() {
         return null;   // offline, blocked, or shape changed — use filings
     }
 }
+
+// ── Strive: capital structure from its weekly 8-K ────────────────────────
+//
+// Strive has no live API, but it files an 8-K after every bitcoin purchase
+// (roughly weekly) tabulating holdings, both share classes and the SATA
+// preferred. scripts/snapshot-asst-8k.mjs parses the newest one into
+// data/asst-capital.json, which gives ASST figures dated to within a week
+// instead of the quarterly 10-Q the dashboard used to rely on.
+//
+// The difference is not cosmetic. On 2026-09-25 the 10-Q-derived numbers had
+// ASST at 85.4M shares holding 24,530 BTC; the 8-K had 97.0M shares holding
+// 26,355. Both errors ran the same way, understating mNAV.
+let _asstCapPromise = null;
+function loadAsstCapital() {
+    if (!_asstCapPromise) {
+        _asstCapPromise = fetch('data/asst-capital.json')
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null);
+    }
+    return _asstCapPromise;
+}
+
+async function fetchAsstFigures(equityPrice, btcPrice) {
+    const c = await loadAsstCapital();
+    if (!c?.btcHoldings || !c?.effectiveShares || !equityPrice || !btcPrice) return null;
+
+    const shares = c.effectiveShares;
+    const marketCap = equityPrice * shares;
+    const btcNav = c.btcHoldings * btcPrice;
+
+    // Senior claims: the SATA perpetual preferred at its $100 stated amount,
+    // less the assets that would meet it first — cash and the STRC preferred
+    // Strive holds as an investment. Same shape as Strategy's own net figure,
+    // so the two are finally comparable.
+    const sataValue = (c.sataShares || 0) * (c.sataStatedAmount || 100);
+    const seniorClaims = sataValue - (c.cashUsd || 0) - (c.strcFairValueUsd || 0);
+    const netNav = btcNav - seniorClaims;
+
+    ISSUER.ASST = {
+        asOf: c.asOf,
+        price: equityPrice,
+        marketCap,
+        shares,
+        dilutedShares: c.dilutedShares,
+        btcHoldings: c.btcHoldings,
+        btcPrice,
+        btcNav,
+        seniorClaims,
+        netNav,
+        sataShares: c.sataShares,
+        cashUsd: c.cashUsd,
+        strcFairValueUsd: c.strcFairValueUsd,
+        satsPerShare: (c.btcHoldings / shares) * 1e8,
+        netSatsPerShare: netNav > 0 ? ((netNav / btcPrice) / shares) * 1e8 : null,
+        btcPerShareUsd: btcNav / shares,
+        netBtcPerShareUsd: netNav / shares,
+        mnavGross: marketCap / btcNav,
+        // Published the way Strategy publishes theirs: price over net backing.
+        mnavPublished: netNav > 0 ? marketCap / netNav : null,
+        source: '8-K',
+    };
+    return ISSUER.ASST;
+}

@@ -1,0 +1,18 @@
+{
+  "generated": "2026-09-26T14:16:20.383Z",
+  "note": "Strive capital structure parsed from the most recent 8-K bitcoin-purchase announcement, which tabulates holdings, share classes and preferred. Filed roughly weekly, so this is far fresher than the quarterly 10-Q figures.",
+  "company": "ASST",
+  "asOf": "2026-09-18",
+  "filed": "2026-09-21",
+  "accession": "0001628280-26-062806",
+  "btcHoldings": 26355,
+  "classA": 0.001,
+  "classB": 9198036,
+  "effectiveShares": 97002649,
+  "dilutedShares": 100144713,
+  "sataShares": 11184160,
+  "sataStatedAmount": 100,
+  "cashUsd": 229600000,
+  "strcFairValueUsd": 49748000,
+  "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026062806/asst-20260921.htm"
+}

@@ -37,6 +37,15 @@ async function loadAssetData() {
         if (t.key === 'BTC') continue;
         EQUITY[t.key] = TREASURIES?.[t.key]?.prices || [];
     }
+
+    // Strive has no live API, so its current figures come from the weekly 8-K
+    // capital table. Needs both prices, hence here rather than in the signal
+    // load. Never allowed to throw: a miss just leaves the filing-derived path.
+    try {
+        const px = EQUITY.ASST;
+        const btc = SERIES?.daily?.length ? SERIES.daily[SERIES.daily.length - 1].close : null;
+        if (px?.length && btc) await fetchAsstFigures(px[px.length - 1].close, btc);
+    } catch { /* keep filing-derived figures */ }
 }
 
 // Shares outstanding as of a date, from the quarterly SEC series. Uses the
@@ -129,12 +138,14 @@ function computeMnav(companyKey, btcPrice, asOfTs) {
             netBtcPerShareUsd: iss.netBtcPerShareUsd,
             satsPerShare: iss.satsPerShare,
             netSatsPerShare: iss.netSatsPerShare,
-            seniorClaims: (iss.debt || 0) + (iss.pref || 0),
+            // MSTR reports debt and preferred separately; ASST's 8-K path
+            // already nets cash and STRC out into one figure.
+            seniorClaims: iss.seniorClaims ?? ((iss.debt || 0) + (iss.pref || 0)),
             shares: iss.shares,
             sharesAsOfDate: (iss.asOf || '').slice(0, 10),
             sharesPeriod: (iss.asOf || '').slice(0, 10),
             sharesClasses: 1,
-            sharesSource: 'issuer-live',
+            sharesSource: iss.source === '8-K' ? 'issuer-8k' : 'issuer-live',
             stackGrowth: null,
             btcPerShare: iss.btcHoldings / iss.shares,
             costUsd: t.btcCostUsd,
@@ -404,7 +415,13 @@ function renderAssetView(key) {
                     <dd>${btcPrice ? fmtEq(nav.btcPerShare * btcPrice) : '—'}</dd></div>
             </dl>
             <p class="asset-note">
-                ${nav.sharesSource === 'issuer-live' ? `
+                ${nav.sharesSource === 'issuer-8k' ? `
+                Figures come from the capital-structure table in Strive's most recent
+                8-K bitcoin-purchase announcement (as of ${nav.sharesAsOfDate}) — holdings,
+                both share classes and the SATA preferred, filed roughly weekly. That is
+                far fresher than the quarterly 10-Q this used to rely on, which by late
+                September was understating both the share count and the stack.`
+                : nav.sharesSource === 'issuer-live' ? `
                 Figures are read live from the company's own published data
                 (${nav.sharesAsOfDate}): share count, market cap, debt and preferred all
                 come from the issuer rather than being reconstructed from quarterly

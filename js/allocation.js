@@ -66,12 +66,39 @@ function allocationCandidates() {
         const sh = sharesAsOf(tab.key, last.ts);
         if (!sh) continue;
 
-        const mnav = (last.close * sh.shares) / (t.btcHoldings * btcPrice);
-        const btcPerUnit = (t.btcHoldings / sh.shares) / last.close;
+        // Use the issuer's own current figures where we have them (MSTR's live
+        // API, ASST's weekly 8-K). Filing-derived counts go stale between
+        // quarters and understated ASST's mNAV by 13% — which is exactly the
+        // error that would send the monthly buy to the wrong name.
+        const iss = ISSUER[tab.key];
+        const shares  = iss?.shares ?? sh.shares;
+        const holdings = iss?.btcHoldings ?? t.btcHoldings;
+        const price   = iss?.price ?? last.close;
+
+        const mnav = (price * shares) / (holdings * btcPrice);
+        const btcPerUnit = (holdings / shares) / price;
+
+        // Net of everything senior to common. This is the figure both companies
+        // publish about themselves, and the only one on which they are
+        // genuinely comparable — a wrapper with a large preferred stack looks
+        // far cheaper on the gross number than it is.
+        // MSTR publishes its net figure directly (netBtcReserve); ASST's is
+        // derived in issuer.js from its 8-K. Fall back to the published mNAV
+        // when only that is available.
+        const netNav = iss?.netNav ?? iss?.netBtcReserve ?? null;
+        const mnavNet = (netNav && netNav > 0)
+            ? (price * shares) / netNav
+            : (iss?.mnavPublished ?? null);
+        const netUplift = (netNav && netNav > 0)
+            ? ((netNav / btcPrice) / shares) / price * btcPrice : null;
+
         out.push({
             key: tab.key, label: tab.label, ticker: tab.ticker,
-            mnav, price: last.close,
+            mnav, mnavNet, price,
             uplift: btcPerUnit / (1 / btcPrice),
+            netUplift,
+            live: !!iss,
+            asOf: iss?.asOf ? String(iss.asOf).slice(0, 10) : null,
             validated: !!t.holdingsHistory?.length,
         });
     }
@@ -146,19 +173,22 @@ function renderAllocation() {
 
         <div class="table-wrap">
             <table class="backtest-table alloc-compare">
-                <thead><tr><th>Route</th><th>mNAV</th><th>BTC per ${P.currency}</th><th></th></tr></thead>
+                <thead><tr><th>Route</th><th>mNAV</th><th>Net mNAV</th><th>BTC per ${P.currency}</th><th></th></tr></thead>
                 <tbody>
                     ${a.candidates.map(c => `
                         <tr class="${(c === best && worthIt) ? 'alloc-picked' : ''}">
                             <td>${escapeHtml(c.label)} <span class="alloc-tick">${escapeHtml(c.ticker)}</span>${
                                 c.validated ? '' : ' <span class="alloc-unval" title="No historical mNAV exists for this company, so its thresholds cannot be checked against its own past">unvalidated</span>'}</td>
                             <td class="${c.mnav < 1 ? 'val-up' : 'val-down'}">${c.mnav.toFixed(2)}×</td>
+                            <td class="${c.mnavNet === null ? '' : (c.mnavNet < 1 ? 'val-up' : 'val-down')}"
+                                title="Market cap over Bitcoin value after debt and preferred">${
+                                c.mnavNet === null ? '—' : c.mnavNet.toFixed(2) + '×'}</td>
                             <td>${c.uplift.toFixed(2)}×</td>
                             <td>${(c === best && worthIt) ? '← cheaper' : ''}</td>
                         </tr>`).join('')}
                     <tr class="${worthIt ? '' : 'alloc-picked'}">
                         <td>Bitcoin <span class="alloc-tick">spot</span></td>
-                        <td>—</td><td>1.00×</td>
+                        <td>—</td><td>—</td><td>1.00×</td>
                         <td>${worthIt ? '' : '← no discount available'}</td>
                     </tr>
                 </tbody>
