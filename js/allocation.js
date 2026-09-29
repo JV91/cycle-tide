@@ -173,7 +173,10 @@ function renderAllocation() {
 
         <div class="table-wrap">
             <table class="backtest-table alloc-compare">
-                <thead><tr><th>Route</th><th>mNAV</th><th>Net mNAV</th><th>BTC per ${P.currency}</th><th></th></tr></thead>
+                <thead><tr><th>Route</th><th>mNAV</th><th>Net mNAV</th>
+                    <th title="How much Bitcoin price movement one ${P.currency} gives you, relative to buying spot. Includes Bitcoin funded by debt and preferred, so part of it is leverage.">BTC exposure / ${P.currency}</th>
+                    <th title="How much Bitcoin one ${P.currency} actually owns after debt and preferred are paid, relative to buying spot.">BTC owned / ${P.currency}</th>
+                    <th></th></tr></thead>
                 <tbody>
                     ${a.candidates.map(c => `
                         <tr class="${(c === best && worthIt) ? 'alloc-picked' : ''}">
@@ -184,11 +187,13 @@ function renderAllocation() {
                                 title="Market cap over Bitcoin value after debt and preferred">${
                                 c.mnavNet === null ? '—' : c.mnavNet.toFixed(2) + '×'}</td>
                             <td>${c.uplift.toFixed(2)}×</td>
+                            <td class="${c.netUplift === null ? '' : (c.netUplift >= 1 ? 'val-up' : 'val-down')}">${
+                                c.netUplift === null ? '—' : c.netUplift.toFixed(2) + '×'}</td>
                             <td>${(c === best && worthIt) ? '← cheaper' : ''}</td>
                         </tr>`).join('')}
                     <tr class="${worthIt ? '' : 'alloc-picked'}">
                         <td>Bitcoin <span class="alloc-tick">spot</span></td>
-                        <td>—</td><td>—</td><td>1.00×</td>
+                        <td>—</td><td>—</td><td>1.00×</td><td>1.00×</td>
                         <td>${worthIt ? '' : '← no discount available'}</td>
                     </tr>
                 </tbody>
@@ -201,6 +206,23 @@ function renderAllocation() {
             rather than chasing whichever name has run recently. When neither is
             below 0.95× it goes to spot instead: at parity a wrapper adds equity,
             dilution and single-company risk while buying no extra Bitcoin.
+        </p>
+        <p class="asset-note">
+            <strong>Exposure is not ownership.</strong> Part of each company's Bitcoin
+            is funded by debt and preferred stock that are paid before common
+            shareholders, so a ${P.currency} of stock moves with more Bitcoin than it
+            owns. That is leverage: it adds upside when Bitcoin rises and brings the
+            point where common is wiped out closer when it falls. The rule above
+            compares <em>exposure</em>. ${(() => {
+                const owners = a.candidates.filter(c => c.netUplift !== null && c.netUplift >= 1);
+                return owners.length
+                    ? `On <em>ownership</em>, ${owners.map(c => escapeHtml(c.label)).join(' and ')}
+                       also beat${owners.length === 1 ? 's' : ''} spot today — more Bitcoin owned
+                       per ${P.currency} as well as more exposure.`
+                    : `On <em>ownership</em> neither company beats buying spot today — you pay
+                       a premium for the leverage and for whatever the company adds by issuing
+                       stock above its backing.`;
+            })()}
         </p>
         ${metricInfoHtml('allocation')}
         </div>

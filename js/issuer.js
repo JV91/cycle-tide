@@ -236,6 +236,9 @@ async function fetchAsstFigures(equityPrice, btcPrice) {
         // Published the way Strategy publishes theirs: price over net backing.
         mnavPublished: netNav > 0 ? marketCap / netNav : null,
         source: '8-K',
+        // Every weekly table, so per-share growth can be measured NET of the
+        // preferred as well as gross (see js/accretion.js).
+        history: c.history || [],
     };
     return ISSUER.ASST;
 }

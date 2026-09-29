@@ -59,6 +59,23 @@ function accretionSeries(companyKey) {
         });
     }
     points.sort((a, b) => a.ts - b.ts);
+
+    // A live point after the last filing, where the issuer publishes current
+    // holdings and a share count on the same basis as the filings (shares that
+    // exist: Strategy's market cap / price). Without it the rate stopped at the
+    // last 10-Q and missed what happened since — for Strategy in Q3 2026, +9.8%
+    // shares against +0.2% Bitcoin, the proceeds going to a USD reserve.
+    // Strive's latest 8-K is already the last point, so it is not duplicated.
+    const iss = typeof ISSUER !== 'undefined' ? ISSUER[companyKey] : null;
+    const lastPt = points[points.length - 1];
+    if (iss && iss.source !== '8-K' && iss.btcHoldings && iss.shares && lastPt) {
+        const ts = Date.now();
+        if (ts - lastPt.ts > 20 * 86400000) {
+            points.push({ end: new Date(ts).toISOString().slice(0, 10), ts,
+                          btc: iss.btcHoldings, shares: iss.shares,
+                          sats: (iss.btcHoldings / iss.shares) * 1e8, source: 'live' });
+        }
+    }
     if (points.length < 2) return null;
 
     // Annualise each step so periods of different length are comparable — the
@@ -125,10 +142,41 @@ function renderAccretion(companyKey, currentMnav) {
     const headlineSats = live?.satsPerShare ?? a.latest.sats;
     const headlineStale = !live;
 
-    // Below 1.0x mNAV, issuing stock destroys BTC per share. That is the single
-    // most important piece of context for reading the rate, so it is stated
-    // inline rather than left to the reader to connect.
-    const dilutive = currentMnav !== null && currentMnav !== undefined && currentMnav < 1;
+    // Whether issuing stock helps or hurts common shareholders depends on NET
+    // mNAV, not gross. New shares take a slice of what is left AFTER debt and
+    // preferred, so issuing above net backing per share adds to every existing
+    // share's Bitcoin even when gross mNAV is below 1. Keying this warning off
+    // gross told Strategy holders (0.92x gross, 1.18x net) that issuance was
+    // shrinking their Bitcoin when it was growing it.
+    const netMnav = live?.mnavPublished ?? null;
+    const gross = currentMnav ?? null;
+    const gate = netMnav ?? gross;
+    const dilutive = gate !== null && gate < 1;
+    const grossOnlyBelow = !dilutive && gross !== null && gross < 1;
+
+    // Net growth: per-share Bitcoin after the claims ahead of common, with the
+    // BTC price held at today's level so it measures the company, not the
+    // market. Only computable where each observation carries its claims —
+    // Strive's weekly 8-K tables do. Buying Bitcoin with new preferred raises
+    // GROSS sats/share but adds an equal dollar claim ahead of you, so without
+    // this the card counted leverage as accretion: over 2026-07-24..09-25 Strive
+    // grew +18.3% gross but +9.0% net.
+    let net = null;
+    const hist = live?.history;
+    if (hist?.length >= 2 && live.btcPrice) {
+        const P = live.btcPrice;
+        const perShare = h => (h.btcHoldings
+            - ((h.sataShares || 0) * 100 - (h.cashUsd || 0) - (h.strcFairValueUsd || 0)) / P)
+            / h.effectiveShares;
+        const f = hist[0], l = hist[hist.length - 1];
+        const days = (Date.parse(l.asOf) - Date.parse(f.asOf)) / 86400000;
+        const g = perShare(l) / perShare(f);
+        const gg = (l.btcHoldings / l.effectiveShares) / (f.btcHoldings / f.effectiveShares);
+        if (days > 20 && g > 0) {
+            net = { change: g - 1, ann: Math.pow(g, 365 / days) - 1, gross: gg - 1,
+                    from: f.asOf, to: l.asOf, weeks: Math.round(days / 7) };
+        }
+    }
 
     let verdict, tone;
     if (rate === null) { verdict = 'Not enough history.'; tone = 'warn'; }
@@ -153,8 +201,13 @@ function renderAccretion(companyKey, currentMnav) {
             </div>` : ''}
             <div class="accretion-main">
                 <div class="accretion-value tone-${tone}">${fmtRate(rate)}</div>
-                <div class="accretion-label">latest quarter, annualised</div>
+                <div class="accretion-label">since last quarter end, annualised${net ? ' (gross)' : ''}</div>
             </div>
+            ${net ? `
+            <div class="accretion-main">
+                <div class="accretion-value ${net.ann >= 0 ? 'tone-good' : 'tone-bad'}">${fmtRate(net.ann)}</div>
+                <div class="accretion-label">net of claims, annualised</div>
+            </div>` : ''}
             <div class="accretion-main">
                 <div class="accretion-value">${fmtRate(a.totalCagr)}</div>
                 <div class="accretion-label">since ${a.points[0].end.slice(0, 7)}, annualised</div>
@@ -164,25 +217,40 @@ function renderAccretion(companyKey, currentMnav) {
         <p class="accretion-read tone-${tone}">${verdict}</p>
 
         ${dilutive ? `<p class="accretion-warn">
-            At <strong>${currentMnav.toFixed(2)}×</strong> mNAV every $1 of stock issued
-            buys about <strong>${(currentMnav * 100).toFixed(0)}¢</strong> of Bitcoin per
-            existing share, so raising equity here <em>reduces</em> this number. Accretion
-            resumes only once the discount closes — which is why the multiple still
-            matters even though it is a poor guide to long-run returns.
+            At <strong>${gate.toFixed(2)}×</strong> ${netMnav !== null ? 'net ' : ''}mNAV every
+            $1 of stock issued adds only about <strong>${(gate * 100).toFixed(0)}¢</strong> of
+            Bitcoin that belongs to shareholders, so raising equity here <em>shrinks</em>
+            each existing share's Bitcoin. That reverses once the stock trades above its
+            backing again — which is why the multiple still matters even though it is a
+            poor guide to long-run returns.
+        </p>` : grossOnlyBelow ? `<p class="accretion-note">
+            Gross mNAV is <strong>${gross.toFixed(2)}×</strong>, so new shares lower the
+            sats-per-share figure above — but net mNAV is <strong>${netMnav.toFixed(2)}×</strong>.
+            After debt and preferred, each dollar raised by selling stock still adds more
+            than a dollar of Bitcoin that is yours. Read this card's gross figures with
+            that in mind: for a company with claims ahead of common, the net number is
+            the one that measures your share.
         </p>` : `<p class="accretion-note">
-            Above 1.0× mNAV, issuing stock buys more Bitcoin than it dilutes, so
-            equity raises push this number up. That is the flywheel working.
+            Above 1.0× ${netMnav !== null ? 'net ' : ''}mNAV, issuing stock adds more Bitcoin
+            than it dilutes. That is the flywheel working.
         </p>`}
+        ${net ? `<p class="accretion-note">
+            Over the last ${net.weeks} weeks of 8-K tables (${net.from} to ${net.to}), sats per
+            share grew <strong>${fmtRate(net.gross)}</strong> gross but
+            <strong>${fmtRate(net.change)}</strong> net of claims, at a constant BTC price. The
+            difference is Bitcoin bought with new preferred stock: it raises the gross count
+            but adds an equal dollar claim ahead of common, so it is leverage, not accretion.
+        </p>` : ''}
 
         <div class="table-wrap">
             <table class="backtest-table">
                 <thead><tr>
-                    <th>Quarter end</th><th>Sats / share</th><th>Change</th><th>Annualised</th>
+                    <th>Date</th><th>Sats / share</th><th>Change</th><th>Annualised</th>
                 </tr></thead>
                 <tbody>
                     ${rows.map(p => `
                         <tr>
-                            <td>${p.end}</td>
+                            <td>${p.end}${p.source === 'live' ? ' <span class="alloc-tick" title="Holdings and share count published by the company today">live</span>' : ''}</td>
                             <td>${fmtSats(p.sats)}</td>
                             <td class="${p.growth >= 0 ? 'val-up' : 'val-down'}">${fmtRate(p.growth)}</td>
                             <td class="${p.cagr >= 0 ? 'val-up' : 'val-down'}">${fmtRate(p.cagr)}</td>
