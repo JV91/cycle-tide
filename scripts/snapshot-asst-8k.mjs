@@ -91,8 +91,14 @@ async function newCapitalTables(known) {
         const r = await get(url);
         await sleep(320);
         if (r.status !== 200) continue;
-        const text = flatten(r.body);
-        if (!/following updates to its holdings/i.test(text)) continue;
+        const full = flatten(r.body);
+        const intro = full.search(/following updates to its holdings/i);
+        if (intro < 0) continue;
+        // Read rows from the table only. Labels like "Class A common stock"
+        // also occur in the filing's cover text, and matching there picked up
+        // the $0.001 par value as the Class A share count.
+        const tableAt = full.slice(intro).search(/As of [A-Z][a-z]+ \d{1,2}, \d{4}/);
+        const text = tableAt >= 0 ? full.slice(intro + tableAt) : full.slice(intro);
 
         // "As of <date A> As of <date B>" — B is the current column.
         const dates = [...text.matchAll(/As of ([A-Z][a-z]+ \d{1,2}, \d{4})/g)].map(m => m[1]);
@@ -102,6 +108,7 @@ async function newCapitalTables(known) {
         const classB   = rowValue(text, 'Class B common stock');
         const effective = rowValue(text, 'Effective Common Shares Outstanding');
         const diluted  = rowValue(text, 'Assumed Fully Diluted Shares');
+        const warrants = rowValue(text, 'Shares Underlying Traditional Warrants');
         const sata     = rowValue(text, 'SATA Stock');
         const btc      = rowValue(text, 'Bitcoin held');
         const cashK    = rowValue(text, String.raw`Cash and cash equivalents \(in thousands\)`);
@@ -119,6 +126,10 @@ async function newCapitalTables(known) {
             // the one that matches the market cap a quote service reports.
             effectiveShares: effective,
             dilutedShares: diluted,
+            // Warrants are listed separately from "fully diluted". Some sites
+            // (mnav.com) add them in, which is why their diluted share count
+            // runs ~24M higher than the company's own.
+            warrantShares: warrants,
             // SATA is perpetual preferred with a $100 stated amount, carried in
             // mezzanine equity — senior to common in a wind-up.
             sataShares: sata,
@@ -173,12 +184,9 @@ fs.writeFileSync(OUT, JSON.stringify({
         + 'roughly weekly, so this is far fresher than the quarterly 10-Q figures.',
     company: 'ASST',
     ...cap,
-    // Compact per-week series for the holdings history; the full rows (with
-    // source URLs) are only kept for the latest table above.
-    history: history.map(h => ({
-        asOf: h.asOf, filed: h.filed, accession: h.accession,
-        btcHoldings: h.btcHoldings, effectiveShares: h.effectiveShares,
-        sataShares: h.sataShares, cashUsd: h.cashUsd, strcFairValueUsd: h.strcFairValueUsd,
-    })),
+    // Full rows, not a compact subset: on a run that finds no new filing the
+    // latest record is read back from here, and a trimmed row silently dropped
+    // fields such as dilutedShares and sataStatedAmount from the top level.
+    history,
 }, null, 2));
 console.log(`\nWrote ${OUT}`);
