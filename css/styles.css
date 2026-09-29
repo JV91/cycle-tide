@@ -20,6 +20,11 @@
 
 * { box-sizing: border-box; }
 
+/* A class that sets `display` beats the browser's own [hidden] rule, so
+   `el.hidden = true` silently did nothing on flex/inline-flex elements
+   (.status-row, .live-ticker). Make the attribute mean what it says. */
+[hidden] { display: none !important; }
+
 body {
     margin: 0;
     background: var(--bg);
@@ -1555,3 +1560,15 @@ body {
     margin: 8px 0 0;
 }
 .mnav-claims strong { color: var(--text-primary); }
+
+/* Which parts of the page are live and how old the files are. Quiet, like the
+   "updated" stamp beside it; the full breakdown is in its tooltip. */
+.data-age {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-muted);
+    cursor: help;
+}
+@media (max-width: 720px) {
+    .data-age { flex: 1 1 100%; }
+}

@@ -502,6 +502,7 @@ async function init() {
         await loadAssetData().catch(e => console.warn('[cycletide] asset data:', e));
         renderTabs();
         renderAllocation();
+        renderDataAge();
         if (activeTab !== 'BTC') switchTab(activeTab);
 
         // Date browser controls
@@ -550,28 +551,137 @@ async function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 
-// Manual refresh: force past any active rate-limit cooldown and refetch in
-// place. Retrying the signals that are dark is the whole point, so this
-// deliberately bypasses both the TTL and the backoff.
+// ── Keeping an open page current ────────────────────────────────────────────
+//
+// Previously nothing did. The snapshot loaders memoized their first fetch for
+// the life of the page, and "Refresh data" re-ran only the BTC signals — it
+// never refetched the treasury, ETF or Strive files and never re-rendered the
+// allocation or the treasury tabs. A tab left open showed whatever it loaded
+// first, while the live BTC ticker kept streaming and made it look current.
+//
+// Two cadences, both paused while the tab is hidden:
+//   every 5 min   live quotes (MSTR issuer API, ASST quote feed) and every
+//                 figure derived from them — cheap, no files
+//   every 30 min  the committed files as well, in case the workflow has
+//                 published newer ones since the page opened
+const QUOTE_REFRESH_MS = 5 * 60 * 1000;
+const FILE_REFRESH_MS = 30 * 60 * 1000;
+let _refreshing = false;
+let _lastFileRefresh = Date.now();
+
+// Re-render without moving the reader: a historical date stays on that date,
+// the latest view follows the data forward, the active tab stays put.
+function rerenderAll(wasLatest, previousViewTs) {
+    const target = wasLatest ? dayBounds().last : previousViewTs;
+    renderFor(target);     // on a treasury tab this renders that tab instead
+    if (activeTab === 'BTC') {
+        renderBacktest();
+        renderScoreChart();
+    }
+    // (on a treasury tab the BTC chart is hidden; switchTab redraws it on return)
+    renderAllocation();
+    renderDataAge();
+}
+
+async function refreshAll({ files = true, force = false } = {}) {
+    if (_refreshing) return;
+    _refreshing = true;
+    const previousViewTs = viewTs;
+    const wasLatest = viewTs === null || viewTs >= dayBounds().last;
+    if (files) { resetSnapshotCaches(); _lastFileRefresh = Date.now(); }
+    if (force) FORCE_REFRESH = true;
+    try {
+        await loadAllSignals();           // BTC signals + onchain/ETF files + MSTR issuer
+        await loadAssetData();            // treasury file + live quotes + Strive 8-K
+        rerenderAll(wasLatest, previousViewTs);
+    } finally {
+        FORCE_REFRESH = false;
+        _refreshing = false;
+    }
+}
+
+async function refreshQuotes() {
+    if (_refreshing) return;
+    _refreshing = true;
+    try {
+        await fetchIssuerFigures();
+        await refreshAssetQuotes();
+        renderAllocation();
+        if (activeTab !== 'BTC') renderAssetView(activeTab);
+        renderDataAge();
+    } finally {
+        _refreshing = false;
+    }
+}
+
+function fmtAgo(ts) {
+    if (!ts) return null;
+    const m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m} min ago`;
+    const h = Math.round(m / 60);
+    if (h < 48) return `${h}h ago`;
+    return `${Math.round(h / 24)}d ago`;
+}
+
+// What the page is actually built from, and how old each piece is. A live BTC
+// ticker next to a two-day-old treasury file used to imply the whole page was
+// live; this says which parts are.
+function renderDataAge() {
+    const el = document.getElementById('dataAge');
+    if (!el) return;
+    const gen = p => SNAPSHOT_META[p]?.generated ? Date.parse(SNAPSHOT_META[p].generated) : null;
+    const lastDay = s => s?.length ? new Date(s[s.length - 1].ts).toISOString().slice(0, 10) : '—';
+
+    const files = gen('data/treasuries.json');
+    const quotes = typeof LIVE_QUOTES_AT !== 'undefined' ? LIVE_QUOTES_AT : null;
+    el.textContent = [
+        quotes ? `share prices live, ${fmtAgo(quotes)}` : 'share prices from last snapshot',
+        files ? `data files ${fmtAgo(files)}` : null,
+    ].filter(Boolean).join(' · ');
+
+    const asst = typeof ISSUER !== 'undefined' ? ISSUER.ASST : null;
+    el.title = [
+        `Share prices: ${quotes ? 'live quotes, fetched ' + fmtAgo(quotes) : 'last committed daily close'}`,
+        `Price history & holdings file: ${files ? fmtAgo(files) : 'not loaded'}`,
+        `Strive capital table: 8-K as of ${asst?.asOf || '—'}`,
+        `ETF flows: through ${lastDay(SERIES?.etf_flow)}`,
+        `On-chain (MVRV, NUPL, Puell): through ${lastDay(SERIES?.mvrv_z)} — the provider publishes about a week behind`,
+        'Files are refreshed by a scheduled job several times a day; this page rechecks them every 30 min.',
+    ].join('\n');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Manual refresh: force past any rate-limit cooldown and refetch
+    // everything — files included. Retrying what is dark is the point.
     const btn = document.getElementById('refreshBtn');
-    if (!btn) return;
-    btn.addEventListener('click', async () => {
+    if (btn) btn.addEventListener('click', async () => {
         const original = btn.textContent;
         btn.disabled = true;
         btn.textContent = 'Refreshing…';
-        FORCE_REFRESH = true;
         try {
-            await loadAllSignals();
-            renderFor(dayBounds().last);
-            renderBacktest();
-            renderScoreChart();
+            await refreshAll({ files: true, force: true });
         } catch (err) {
             console.error('[cycletide] refresh failed:', err);
         } finally {
-            FORCE_REFRESH = false;
             btn.disabled = false;
             btn.textContent = original;
         }
+    });
+
+    setInterval(() => {
+        if (document.hidden || !SERIES) return;
+        const due = Date.now() - _lastFileRefresh >= FILE_REFRESH_MS;
+        (due ? refreshAll({ files: true }) : refreshQuotes())
+            .catch(e => console.warn('[cycletide] background refresh:', e));
+    }, QUOTE_REFRESH_MS);
+
+    // Coming back to a tab that sat hidden: catch up at once rather than at
+    // the next tick, since the interval was skipping while it was hidden.
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden || !SERIES) return;
+        const due = Date.now() - _lastFileRefresh >= FILE_REFRESH_MS;
+        (due ? refreshAll({ files: true }) : refreshQuotes())
+            .catch(e => console.warn('[cycletide] refresh on return:', e));
     });
 });

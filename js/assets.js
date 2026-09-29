@@ -30,17 +30,24 @@ let TREASURIES = null;  // committed snapshot
 
 async function loadAssetData() {
     TREASURIES = await fetchTreasuries();
-    // Prices ship inside the same snapshot — Yahoo cannot be called from a
-    // browser (no CORS headers), so they are fetched server-side by
-    // scripts/snapshot-treasuries.mjs and committed alongside the holdings.
+    // Price HISTORY ships inside the snapshot — Yahoo cannot be called from a
+    // browser (no CORS headers), so scripts/snapshot-treasuries.mjs fetches it
+    // server-side. Today's price is then laid over it live, below.
     for (const t of ASSET_TABS) {
         if (t.key === 'BTC') continue;
         EQUITY[t.key] = TREASURIES?.[t.key]?.prices || [];
     }
+    await refreshAssetQuotes();
+}
 
-    // Strive has no live API, so its current figures come from the weekly 8-K
-    // capital table. Needs both prices, hence here rather than in the signal
-    // load. Never allowed to throw: a miss just leaves the filing-derived path.
+// Live quotes, then everything derived from them. Separate from loadAssetData
+// so the periodic refresh can update prices without refetching the files.
+async function refreshAssetQuotes() {
+    try { await applyLiveQuotes(); } catch { /* snapshot closes stand */ }
+
+    // Strive has no live API, so its capital structure comes from the weekly
+    // 8-K table; valued at the live price just laid over the series. Never
+    // allowed to throw: a miss leaves the filing-derived path.
     try {
         const px = EQUITY.ASST;
         const btc = SERIES?.daily?.length ? SERIES.daily[SERIES.daily.length - 1].close : null;
@@ -84,10 +91,18 @@ function treasuryEra(key) {
 // browser, not always "today" — otherwise stepping back in time would leave
 // the valuation read showing current numbers, which is worse than not
 // offering the control at all.
+// Equity bars up to and including the day being viewed.
+//
+// viewTs is a BTC daily bar, stamped 00:00 UTC. Equity bars are stamped at the
+// US open, 13:30-14:30 UTC the same date. Cutting at `ts <= viewTs` therefore
+// dropped the viewed day's own equity bar — on the latest view that meant the
+// treasury tabs showed the PREVIOUS session's close all day, however fresh the
+// data behind them was. Cut at the end of the viewed UTC day instead.
 function asOfEquity(series) {
     if (!series?.length) return series || [];
     if (viewTs === null) return series;
-    const cut = series.filter(p => p.ts <= viewTs);
+    const endOfDay = viewTs + 86400000 - 1;
+    const cut = series.filter(p => p.ts <= endOfDay);
     return cut.length ? cut : series.slice(0, 1);
 }
 
@@ -221,9 +236,13 @@ function switchTab(key) {
     const db = document.querySelector('.date-browser');
     if (db) db.hidden = false;
     // The live ticker streams BTC only — showing an empty one on an equity tab
-    // reads as broken rather than as "not applicable".
-    const tick = document.querySelector('.status-row');
-    if (tick) tick.hidden = key !== 'BTC';
+    // reads as broken rather than as "not applicable". Hide just the ticker:
+    // hiding the whole row also took "Refresh data" and the data-age line off
+    // the treasury tabs, which are exactly where fresh prices matter most.
+    for (const sel of ['.live-ticker', '.live-updated']) {
+        const node = document.querySelector(sel);
+        if (node) node.hidden = key !== 'BTC';
+    }
 
     // Header follows the tab, so the page never claims to be showing one thing
     // while displaying another.

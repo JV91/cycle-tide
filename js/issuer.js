@@ -105,12 +105,97 @@ async function fetchIssuerFigures() {
 // 26,355. Both errors ran the same way, understating mNAV.
 let _asstCapPromise = null;
 function loadAsstCapital() {
-    if (!_asstCapPromise) {
-        _asstCapPromise = fetch('data/asst-capital.json')
-            .then(r => r.ok ? r.json() : null)
-            .catch(() => null);
-    }
+    if (!_asstCapPromise) _asstCapPromise = fetchSnapshot('data/asst-capital.json');
     return _asstCapPromise;
+}
+
+function resetIssuerCaches() {
+    _asstCapPromise = null;
+}
+
+// ── Live intraday quotes ────────────────────────────────────────────────────
+//
+// Equity prices used to come only from the committed snapshot, because Yahoo
+// sends no CORS headers. That tied intraday prices to GitHub's cron, which runs
+// hours late: the "mid-session" refresh measured at 21:07-22:57 UTC, after the
+// close, so the hosted page showed the previous session's close all day.
+//
+// CNBC's quote service answers with `Access-Control-Allow-Origin: *`. Checked
+// against Yahoo on 2026-09-29 18:43 UTC it matched to the cent and the second
+// (ASST 29.41, MSTR 154.44) and agreed with api.strategy.com within 3c.
+//
+// PRICE ONLY. Its share counts are stale (MSTR 392M vs the 422M Strategy
+// publishes), so shares keep coming from the issuer API and the 8-K.
+const QUOTE_URL = 'https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol'
+    + '?requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json&symbols=';
+
+// Trading date in New York for a timestamp. Daily bars are keyed by the
+// session they belong to, which a UTC date gets wrong in the evening.
+function etDate(ts) {
+    return new Date(ts).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
+async function fetchLiveQuotes(symbols) {
+    try {
+        const r = await fetch(QUOTE_URL + symbols.map(encodeURIComponent).join('%7C'));
+        if (!r.ok) return {};
+        const list = (await r.json())?.FormattedQuoteResult?.FormattedQuote || [];
+        const out = {};
+        for (const q of list) {
+            const price = issuerNum(q.last);
+            const ts = Date.parse(q.last_time);
+            if (!price || !Number.isFinite(ts)) continue;
+            out[q.symbol] = { price, ts, high: issuerNum(q.high), source: 'CNBC' };
+        }
+        return out;
+    } catch {
+        return {};   // unreachable or reshaped — the snapshot close stands
+    }
+}
+
+// Fold a live quote into the daily series as that session's bar, replacing the
+// bar if the snapshot already has one for the same trading date and appending
+// it otherwise. Doing it here, once, means the header price, the day change,
+// the charts and the mNAV all read the same number instead of mixing a live
+// valuation with a stale displayed close.
+function overlayQuote(series, q) {
+    if (!series?.length || !q?.price) return false;
+    const day = etDate(q.ts);
+    const i = series.findIndex(p => etDate(p.ts) === day);
+    if (i >= 0) {
+        const bar = series[i];
+        bar.close = q.price;
+        bar.high = Math.max(bar.high ?? q.price, q.high ?? q.price, q.price);
+        bar.live = true;
+    } else if (day > etDate(series[series.length - 1].ts)) {
+        // 14:30 UTC keeps the bar on the same UTC calendar date as its session,
+        // which is what the date-matching code (beta, mNAV history) keys on.
+        series.push({ ts: Date.parse(day + 'T14:30:00Z'), close: q.price,
+                      high: Math.max(q.high ?? q.price, q.price), live: true });
+    } else {
+        return false;   // quote older than the snapshot — nothing to add
+    }
+    return true;
+}
+
+let LIVE_QUOTES_AT = null;
+
+async function applyLiveQuotes() {
+    const quotes = await fetchLiveQuotes(['MSTR', 'ASST']);
+
+    // Strategy's own price wins for MSTR: it is what its mNAV is computed on.
+    const m = ISSUER.MSTR;
+    if (m?.price && m.asOf) {
+        const ts = Date.parse(/Z$|[+-]\d\d:?\d\d$/.test(m.asOf) ? m.asOf : m.asOf + 'Z');
+        if (Number.isFinite(ts)) quotes.MSTR = { price: m.price, ts, high: null, source: 'Strategy' };
+    }
+
+    let applied = 0;
+    for (const [key, q] of Object.entries(quotes)) {
+        if (overlayQuote(EQUITY[key], q)) applied++;
+    }
+    if (applied) LIVE_QUOTES_AT = Date.now();
+    return quotes;
 }
 
 async function fetchAsstFigures(equityPrice, btcPrice) {

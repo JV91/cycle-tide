@@ -144,13 +144,42 @@ async function fetchBTCDaily() {
 // live API is then only a top-up: if it 429s we fall back to the snapshot,
 // which is at most a day or two stale on metrics that update daily anyway.
 
+// ── Committed snapshot files ────────────────────────────────────────────────
+// Every data/*.json file goes through here, for two reasons:
+//
+//  1. `cache: 'no-cache'` makes the browser revalidate with GitHub Pages on
+//     every load (a cheap 304 when nothing changed). Pages serves these with
+//     `max-age=600`, so without it a page opened shortly after the workflow
+//     committed fresh data could keep showing the old file for ten minutes.
+//  2. Each file's `generated` stamp is recorded, so the header can say how old
+//     the files are instead of letting a live BTC ticker imply everything is.
+const SNAPSHOT_META = {};
+
+function fetchSnapshot(path) {
+    return fetch(path, { cache: 'no-cache' })
+        .then(r => r.ok ? r.json() : null)
+        .then(j => {
+            if (j?.generated) SNAPSHOT_META[path] = { generated: j.generated };
+            return j;
+        })
+        .catch(() => null);
+}
+
+// The loaders below memoize their fetch so one page load does not request the
+// same file several times. That memo previously lived forever: "Refresh data"
+// and a tab left open all day never saw a newer file. This clears it.
+function resetSnapshotCaches() {
+    _snapshotPromise = null;
+    _etfPromise = null;
+    _treasuryPromise = null;
+    if (typeof resetIssuerCaches === 'function') resetIssuerCaches();
+}
+
 let _snapshotPromise = null;
 function loadOnchainSnapshot() {
     if (!_snapshotPromise) {
-        _snapshotPromise = fetch('data/onchain.json')
-            .then(r => r.ok ? r.json() : null)
-            .then(j => j?.series || null)
-            .catch(() => null);
+        _snapshotPromise = fetchSnapshot('data/onchain.json')
+            .then(j => j?.series || null);
     }
     return _snapshotPromise;
 }
@@ -190,10 +219,8 @@ const fetchPuellMultiple = () => fetchOnchainSeries('puell', 'puell-multiple', '
 let _etfPromise = null;
 function fetchEtfFlows() {
     if (!_etfPromise) {
-        _etfPromise = fetch('data/etf-flows.json')
-            .then(r => r.ok ? r.json() : null)
-            .then(j => Array.isArray(j?.series) ? j.series : null)
-            .catch(() => null);
+        _etfPromise = fetchSnapshot('data/etf-flows.json')
+            .then(j => Array.isArray(j?.series) ? j.series : null);
     }
     return _etfPromise;
 }
@@ -304,10 +331,8 @@ function unavailableReason(signalKey) {
 let _treasuryPromise = null;
 function fetchTreasuries() {
     if (!_treasuryPromise) {
-        _treasuryPromise = fetch('data/treasuries.json')
-            .then(r => r.ok ? r.json() : null)
-            .then(j => j?.companies || null)
-            .catch(() => null);
+        _treasuryPromise = fetchSnapshot('data/treasuries.json')
+            .then(j => j?.companies || null);
     }
     return _treasuryPromise;
 }

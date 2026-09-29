@@ -1,19 +1,37 @@
 name: Data refresh and alert
 
-# Twice on weekdays: once mid-session (~18:00 UTC / 14:00 ET) so equity prices
-# do not sit a full day stale while BTC streams live, and once after the close
-# (~23:00 UTC) when ETF flows and settled closes are available.
+# GitHub runs scheduled jobs LATE, not on the minute — and worst at the top of
+# the hour, when every repo's "0 * * * *" fires at once. The previous schedule
+# ('0 18' and '0 23') was measured over 2026-09-24..29:
 #
-# A single daily run left MSTR up to 7% stale, which moved mNAV by the same
-# amount — enough to distort the allocation figures on a decision tool.
+#     '0 18 * * 1-5'  started 21:07-22:57 UTC  (3-5h late: AFTER the US close,
+#                                                so the "mid-session" refresh
+#                                                never happened)
+#     '0 23 * * *'    started 00:58-02:24 UTC  (2-3.5h late)
+#
+# So the hosted site showed the previous session's close all trading day.
+# Off-the-hour minutes are queued far less, and several runs across the
+# session mean one late or dropped run no longer leaves a whole day stale.
+#
+# Intraday equity prices no longer depend on this at all — the page reads MSTR
+# from api.strategy.com and ASST from a CORS-open quote feed directly (see
+# js/issuer.js). These runs keep the files the browser cannot fetch itself
+# fresh: Strive's 8-K table, ETF flows, on-chain, and the price history.
 on:
   schedule:
-    - cron: '0 18 * * 1-5'
-    - cron: '0 23 * * *'
+    - cron: '17 14,16,18,20 * * 1-5'   # during the US session
+    - cron: '43 21 * * 1-5'            # after the close, settled daily bar
+    - cron: '11 3 * * *'               # overnight: ETF flows, on-chain, weekends
   workflow_dispatch:        # manual trigger for testing
 
 permissions:
   contents: write           # needed to commit refreshed snapshots
+
+# Late runs bunch up, and two overlapping runs would race on the same data
+# files and fail the second push. Queue them instead.
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
 
 jobs:
   refresh:
@@ -55,7 +73,13 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --staged --quiet || git commit -m "Daily data refresh — score ${{ steps.check.outputs.score }} (${{ steps.check.outputs.band }})"
+          git diff --staged --quiet && exit 0
+          git commit -m "Data refresh — score ${{ steps.check.outputs.score }} (${{ steps.check.outputs.band }})"
+          # A commit can land on main while this run is fetching (a manual
+          # push, or a queued run). Replay onto it rather than failing the
+          # push; on a conflict in a data file the version this run just
+          # fetched is the fresher one, so it wins.
+          git pull --rebase -X theirs origin main
           git push
 
       # Only emails on an actual band crossing, not every day. A daily "still
