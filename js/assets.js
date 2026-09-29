@@ -37,7 +37,57 @@ async function loadAssetData() {
         if (t.key === 'BTC') continue;
         EQUITY[t.key] = TREASURIES?.[t.key]?.prices || [];
     }
+    await deriveHoldingsHistory();
     await refreshAssetQuotes();
+}
+
+// Holdings history for a company that does not tag a coin count in XBRL.
+//
+// MSTR's history comes from us-gaap:CryptoAssetNumberOfUnits. Strive never
+// tags that, so its history was empty and it carried an "unvalidated" label:
+// its mNAV thresholds could not be checked against its own past. But both
+// ingredients exist elsewhere:
+//
+//   quarterly  the filed fair value of its Bitcoin (CryptoAssetFairValue-
+//              Noncurrent) divided by the BTC close that day. Fair value IS
+//              the coin count marked at that price, so this recovers the
+//              count — 19,866 at 2026-06-30 against 20,000 in the first 8-K
+//              three weeks later, after purchases in between.
+//   weekly     the exact coin count and share count from each 8-K purchase
+//              announcement (data/asst-capital.json `history`).
+//
+// Rows carry their own share count where the source gives one, so a weekly
+// point is priced against that week's shares rather than the last 10-Q.
+async function deriveHoldingsHistory() {
+    const daily = SERIES?.daily || [];
+    const closeOn = iso => {
+        const t = Date.parse(iso + 'T23:59:59Z');
+        let c = null;
+        for (const p of daily) { if (p.ts <= t) c = p.close; else break; }
+        return c;
+    };
+    for (const tab of ASSET_TABS) {
+        const t = TREASURIES?.[tab.key];
+        if (!t || t.holdingsHistory?.length) continue;   // XBRL history wins
+
+        const rows = [];
+        for (const [end, usd] of Object.entries(t.filedDigitalAssets || {})) {
+            const px = closeOn(end);
+            if (!usd || usd <= 0 || !px) continue;        // pre-treasury quarters
+            rows.push({ end, btc: usd / px, source: 'implied' });
+        }
+        if (tab.key === 'ASST') {
+            const cap = await loadAsstCapital().catch(() => null);
+            for (const h of cap?.history || []) {
+                rows.push({ end: h.asOf, btc: h.btcHoldings,
+                            shares: h.effectiveShares, source: '8-K' });
+            }
+        }
+        rows.sort((a, b) => a.end.localeCompare(b.end));
+        for (const r of rows) r.ts = Date.parse(r.end + 'T00:00:00Z');
+        t.holdingsHistory = rows;
+        t.holdingsHistoryDerived = true;
+    }
 }
 
 // Live quotes, then everything derived from them. Separate from loadAssetData

@@ -1,18 +1,115 @@
 {
-  "generated": "2026-09-29T18:38:14.726Z",
+  "generated": "2026-09-29T18:59:01.020Z",
   "note": "Strive capital structure parsed from the most recent 8-K bitcoin-purchase announcement, which tabulates holdings, share classes and preferred. Filed roughly weekly, so this is far fresher than the quarterly 10-Q figures.",
   "company": "ASST",
   "asOf": "2026-09-25",
   "filed": "2026-09-28",
   "accession": "0001628280-26-063653",
   "btcHoldings": 27462,
-  "classA": 0.001,
-  "classB": 9198036,
   "effectiveShares": 97651721,
-  "dilutedShares": 100776795,
   "sataShares": 12193180,
-  "sataStatedAmount": 100,
   "cashUsd": 248800000,
   "strcFairValueUsd": 49763000,
-  "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026063653/asst-20260928.htm"
+  "history": [
+    {
+      "asOf": "2026-07-24",
+      "filed": "2026-07-27",
+      "accession": "0001628280-26-049666",
+      "btcHoldings": 20000,
+      "effectiveShares": 84099973,
+      "sataShares": 7829502,
+      "cashUsd": 154000000,
+      "strcFairValueUsd": 43879000
+    },
+    {
+      "asOf": "2026-07-31",
+      "filed": "2026-08-03",
+      "accession": "0001628280-26-051539",
+      "btcHoldings": 20020,
+      "effectiveShares": 84209973,
+      "sataShares": 7829502,
+      "cashUsd": 151300000,
+      "strcFairValueUsd": 45177000
+    },
+    {
+      "asOf": "2026-08-07",
+      "filed": "2026-08-10",
+      "accession": "0001628280-26-054983",
+      "btcHoldings": 20167,
+      "effectiveShares": 85439973,
+      "sataShares": 7829502,
+      "cashUsd": 154900000,
+      "strcFairValueUsd": 47980000
+    },
+    {
+      "asOf": "2026-08-14",
+      "filed": "2026-08-17",
+      "accession": "0001628280-26-057224",
+      "btcHoldings": 20246,
+      "effectiveShares": 86037123,
+      "sataShares": 7829502,
+      "cashUsd": 154800000,
+      "strcFairValueUsd": 47864000
+    },
+    {
+      "asOf": "2026-08-21",
+      "filed": "2026-08-24",
+      "accession": "0001628280-26-058518",
+      "btcHoldings": 21356,
+      "effectiveShares": 89683423,
+      "sataShares": 8270815,
+      "cashUsd": 171900000,
+      "strcFairValueUsd": 48571000
+    },
+    {
+      "asOf": "2026-08-28",
+      "filed": "2026-08-31",
+      "accession": "0001628280-26-059468",
+      "btcHoldings": 23156,
+      "effectiveShares": 93262570,
+      "sataShares": 9073914,
+      "cashUsd": 183500000,
+      "strcFairValueUsd": 49152000
+    },
+    {
+      "asOf": "2026-09-04",
+      "filed": "2026-09-08",
+      "accession": "0001628280-26-060809",
+      "btcHoldings": 24531,
+      "effectiveShares": 94934558,
+      "sataShares": 9995425,
+      "cashUsd": 202600000,
+      "strcFairValueUsd": 49364000
+    },
+    {
+      "asOf": "2026-09-11",
+      "filed": "2026-09-14",
+      "accession": "0001628280-26-061682",
+      "btcHoldings": 25000,
+      "effectiveShares": 94968764,
+      "sataShares": 10397966,
+      "cashUsd": 204200000,
+      "strcFairValueUsd": 49813000
+    },
+    {
+      "asOf": "2026-09-18",
+      "filed": "2026-09-21",
+      "accession": "0001628280-26-062806",
+      "btcHoldings": 26355,
+      "effectiveShares": 97002649,
+      "sataShares": 11184160,
+      "cashUsd": 229600000,
+      "strcFairValueUsd": 49748000
+    },
+    {
+      "asOf": "2026-09-25",
+      "filed": "2026-09-28",
+      "accession": "0001628280-26-063653",
+      "btcHoldings": 27462,
+      "effectiveShares": 97651721,
+      "sataShares": 12193180,
+      "cashUsd": 248800000,
+      "strcFairValueUsd": 49763000
+    }
+  ]
 }

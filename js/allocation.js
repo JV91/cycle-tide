@@ -99,7 +99,7 @@ function allocationCandidates() {
             netUplift,
             live: !!iss,
             asOf: iss?.asOf ? String(iss.asOf).slice(0, 10) : null,
-            validated: !!t.holdingsHistory?.length,
+            validated: (t.holdingsHistory?.length || 0) >= 2,
         });
     }
     if (!out.length) return null;
@@ -178,7 +178,7 @@ function renderAllocation() {
                     ${a.candidates.map(c => `
                         <tr class="${(c === best && worthIt) ? 'alloc-picked' : ''}">
                             <td>${escapeHtml(c.label)} <span class="alloc-tick">${escapeHtml(c.ticker)}</span>${
-                                c.validated ? '' : ' <span class="alloc-unval" title="No historical mNAV exists for this company, so its thresholds cannot be checked against its own past">unvalidated</span>'}</td>
+                                c.validated ? '' : ' <span class="alloc-unval" title="Fewer than two dated holdings observations could be built from this company’s filings, so its thresholds cannot be checked against its own past">unvalidated</span>'}</td>
                             <td class="${c.mnav < 1 ? 'val-up' : 'val-down'}">${c.mnav.toFixed(2)}×</td>
                             <td class="${c.mnavNet === null ? '' : (c.mnavNet < 1 ? 'val-up' : 'val-down')}"
                                 title="Market cap over Bitcoin value after debt and preferred">${

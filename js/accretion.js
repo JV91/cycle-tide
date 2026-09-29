@@ -36,19 +36,29 @@ function accretionSeries(companyKey) {
     const hist = t?.holdingsHistory;
     if (!hist?.length) return null;
 
+    // Weekly 8-K rows (Strive) are kept out of the step series except the most
+    // recent one: annualising a single week turns a 3.5% week into several
+    // hundred percent a year. Quarter ends plus the latest 8-K keeps each step
+    // about a quarter long while the newest point is still current.
+    const weekly = hist.filter(h => h.source === '8-K');
+    const rows = hist.filter(h => h.source !== '8-K');
+    if (weekly.length) rows.push(weekly[weekly.length - 1]);
+
     const shareByEnd = new Map((t.sharesHistory || []).map(r => [r.end, r]));
     const points = [];
-    for (const h of hist) {
-        const sh = shareByEnd.get(h.end);
-        if (!sh || !h.btc) continue;
+    for (const h of rows) {
+        const shares = h.shares ?? shareByEnd.get(h.end)?.shares;
+        if (!shares || !h.btc) continue;
         points.push({
             end: h.end,
             ts: Date.parse(h.end + 'T00:00:00Z'),
             btc: h.btc,
-            shares: sh.shares,
-            sats: (h.btc / sh.shares) * 1e8,
+            shares,
+            sats: (h.btc / shares) * 1e8,
+            source: h.source || 'xbrl',
         });
     }
+    points.sort((a, b) => a.ts - b.ts);
     if (points.length < 2) return null;
 
     // Annualise each step so periods of different length are comparable — the
@@ -93,8 +103,8 @@ function renderAccretion(companyKey, currentMnav) {
         // disclosure, not a gap in the fetch.
         const why = TREASURIES?.[companyKey]?.holdingsHistory?.length
             ? 'Not enough filed quarters pair a coin count with a share count.'
-            : 'This company does not tag its Bitcoin holdings in XBRL, so no '
-              + 'per-share history can be reconstructed from filings.';
+            : 'No holdings history could be built from this company’s filings, '
+              + 'so no per-share history exists.';
         return `
         <section class="card">
             <h2 class="card-title">SATOSHIS PER SHARE — GROWTH</h2>

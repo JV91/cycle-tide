@@ -73,14 +73,19 @@ function rowValue(text, label) {
     return num(m[2] ?? m[1]);
 }
 
-async function latestCapitalTable() {
+// Every capital table newer than the ones already recorded, newest first.
+// Filings are listed newest-first, so the scan stops at the first accession
+// already in the history — only the very first run reads all ~110 8-Ks.
+async function newCapitalTables(known) {
     const subs = await get(`https://data.sec.gov/submissions/CIK${CIK}.json`);
     if (subs.status !== 200) throw new Error('submissions HTTP ' + subs.status);
     const rec = JSON.parse(subs.body)?.filings?.recent;
     if (!rec) throw new Error('no filings');
 
+    const found = [];
     for (let i = 0; i < rec.form.length; i++) {
         if (rec.form[i] !== '8-K') continue;
+        if (known.has(rec.accessionNumber[i])) break;
         const url = `https://www.sec.gov/Archives/edgar/data/${Number(CIK)}/`
                   + `${rec.accessionNumber[i].replace(/-/g, '')}/${rec.primaryDocument[i]}`;
         const r = await get(url);
@@ -104,7 +109,7 @@ async function latestCapitalTable() {
 
         if (!btc || !effective) continue;   // not the table we want
 
-        return {
+        found.push({
             asOf: asOf ? new Date(asOf + ' UTC').toISOString().slice(0, 10) : null,
             filed: rec.filingDate[i],
             accession: rec.accessionNumber[i],
@@ -121,16 +126,36 @@ async function latestCapitalTable() {
             cashUsd: cashK !== null ? cashK * 1000 : null,
             strcFairValueUsd: strcK !== null ? strcK * 1000 : null,
             sourceUrl: url,
-        };
+        });
     }
-    return null;
+    return found;
 }
 
-const cap = await latestCapitalTable();
-if (!cap) {
+// Keep every table ever parsed. The newest drives today's figures; the full
+// series is Strive's holdings history — the thing that was missing and kept
+// it labelled "unvalidated", because Strive never tags a coin count in XBRL.
+let previous = null;
+try { previous = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch { /* first run */ }
+const prevHistory = previous?.history
+    || (previous?.accession ? [previous] : []);   // older file: just the latest table
+
+// Without a stored history, scan everything: a file from before this change
+// holds only the newest table, and stopping at it would never backfill.
+const known = previous?.history ? new Set(prevHistory.map(h => h.accession)) : new Set();
+const fresh = await newCapitalTables(known);
+const byAsOf = new Map(prevHistory.map(h => [h.asOf, h]));
+for (const h of fresh) byAsOf.set(h.asOf, h);          // a re-filed week replaces
+const history = [...byAsOf.values()]
+    .filter(h => h.asOf && h.btcHoldings && h.effectiveShares)
+    .sort((a, b) => a.asOf.localeCompare(b.asOf));
+
+if (!history.length) {
     console.error('No 8-K capital table found — leaving existing snapshot alone.');
     process.exit(1);
 }
+const cap = history[history.length - 1];
+console.log(`${fresh.length} new capital table(s); ${history.length} in history `
+    + `(${history[0].asOf} -> ${cap.asOf})`);
 
 console.log(`Strive capital structure as of ${cap.asOf} (filed ${cap.filed})`);
 console.log(`  bitcoin held        ${cap.btcHoldings.toLocaleString()}`);
@@ -148,5 +173,12 @@ fs.writeFileSync(OUT, JSON.stringify({
         + 'roughly weekly, so this is far fresher than the quarterly 10-Q figures.',
     company: 'ASST',
     ...cap,
+    // Compact per-week series for the holdings history; the full rows (with
+    // source URLs) are only kept for the latest table above.
+    history: history.map(h => ({
+        asOf: h.asOf, filed: h.filed, accession: h.accession,
+        btcHoldings: h.btcHoldings, effectiveShares: h.effectiveShares,
+        sataShares: h.sataShares, cashUsd: h.cashUsd, strcFairValueUsd: h.strcFairValueUsd,
+    })),
 }, null, 2));
 console.log(`\nWrote ${OUT}`);

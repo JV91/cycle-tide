@@ -143,7 +143,8 @@ function computeAssetSignal(ctx) {
     // MSTR tags holdings in XBRL so a real mNAV range exists; Strive does not,
     // so its verdict rests entirely on reasoned thresholds with no empirical
     // bracket. That difference should be visible, not buried in an explainer.
-    const validated = !!(TREASURIES?.[ctx.companyKey]?.holdingsHistory?.length);
+    // Two points is the minimum the historical range check can use.
+    const validated = (TREASURIES?.[ctx.companyKey]?.holdingsHistory?.length || 0) >= 2;
 
     return { composite, confidence, factors, reliable, mnavAvailable, atDiscount, validated };
 }
@@ -175,7 +176,7 @@ function renderAssetSignal(ctx) {
                 </div>
             </div>
             <div class="asset-signal-verdict">
-                ${r.validated ? '' : `<div class="unvalidated-flag" title="No historical mNAV exists for this company, so these thresholds cannot be checked against its own past">UNVALIDATED THRESHOLDS</div>`}
+                ${r.validated ? '' : `<div class="unvalidated-flag" title="Fewer than two dated holdings observations could be built from this company’s filings, so its thresholds cannot be checked against its own past">UNVALIDATED THRESHOLDS</div>`}
                 <div class="signal-pill ${cls}">${
                     r.reliable ? band.signal.toUpperCase() : 'NO CALL'}</div>
                 <div class="asset-signal-label">${escapeHtml(band.label)}</div>
@@ -251,15 +252,18 @@ function historicalMnav(companyKey) {
 
     const points = [];
     for (const h of hist) {
-        const sh = shareByEnd.get(h.end) || sharesAsOf(companyKey, h.ts);
+        // A weekly 8-K row brings its own share count — use it rather than the
+        // last 10-Q, which trails a serial issuer by weeks of issuance.
+        const shares = h.shares ?? (shareByEnd.get(h.end) || sharesAsOf(companyKey, h.ts))?.shares;
         const equityPx = near(pxMap, h.end);
         const btcPx = near(btcMap, h.end);
-        if (!sh || !equityPx || !btcPx || !h.btc) continue;
+        if (!shares || !equityPx || !btcPx || !h.btc) continue;
         points.push({
             end: h.end,
-            mnav: (equityPx * sh.shares) / (h.btc * btcPx),
+            mnav: (equityPx * shares) / (h.btc * btcPx),
             btc: h.btc,
-            shares: sh.shares,
+            shares,
+            source: h.source || 'xbrl',
         });
     }
     if (points.length < 2) return null;
@@ -282,9 +286,9 @@ function renderMnavHistory(companyKey, currentMnav) {
         <section class="card">
             <h2 class="card-title">HISTORICAL mNAV RANGE</h2>
             <p class="asset-empty">
-                This company does not tag its Bitcoin holdings in SEC XBRL
-                (us-gaap:CryptoAssetNumberOfUnits), so no historical mNAV can be
-                reconstructed — the thresholds cannot be checked against its own past.
+                No holdings history could be built from this company’s filings —
+                neither a tagged coin count, a filed fair value, nor 8-K purchase
+                tables — so the thresholds cannot be checked against its own past.
             </p>
         </section>`;
     }
@@ -319,11 +323,15 @@ function renderMnavHistory(companyKey, currentMnav) {
         </p>
         <div class="table-wrap">
             <table class="backtest-table">
-                <thead><tr><th>Quarter end</th><th>BTC held</th><th>Shares outstanding</th><th>mNAV</th></tr></thead>
+                <thead><tr><th>Date</th><th>BTC held</th><th>Shares outstanding</th><th>mNAV</th></tr></thead>
                 <tbody>
-                    ${h.points.map(p => `
+                    ${[...h.points].reverse().map(p => `
                         <tr>
-                            <td>${escapeHtml(p.end)}</td>
+                            <td>${escapeHtml(p.end)}${p.source === 'implied'
+                                ? ' <span class="alloc-tick" title="Coin count implied from the filed fair value of its Bitcoin divided by the BTC close that day">implied</span>'
+                                : p.source === '8-K'
+                                ? ' <span class="alloc-tick" title="Exact coin and share count from the 8-K purchase announcement">8-K</span>'
+                                : ''}</td>
                             <td>${Math.round(p.btc).toLocaleString('en-US')}</td>
                             <td>${(p.shares / 1e6).toFixed(0)}M</td>
                             <td class="${p.mnav < 1 ? 'val-up' : 'val-down'}">${p.mnav.toFixed(2)}×</td>
@@ -332,11 +340,18 @@ function renderMnavHistory(companyKey, currentMnav) {
             </table>
         </div>
         <p class="asset-note">
-            Reconstructed from SEC XBRL holdings and the share count filed at each
-            quarter end. Only ${h.points.length} observations exist (annual until
-            2025), so this is a <strong>range check, not a percentile</strong> —
-            far too few points to rank against. It exists to show whether the
-            scoring thresholds bracket what has actually occurred.
+            ${h.points.some(p => p.source !== 'xbrl')
+                ? `This company does not tag a coin count in SEC XBRL, so the history is
+                   rebuilt from two other filings: quarter-end points divide the filed
+                   fair value of its Bitcoin by the BTC close that day (marked
+                   <em>implied</em>), and weekly points take the exact coin and share
+                   counts from its 8-K purchase announcements (marked <em>8-K</em>).`
+                : `Reconstructed from SEC XBRL holdings and the share count filed at each
+                   quarter end.`}
+            Only ${h.points.length} observations exist, so this is a
+            <strong>range check, not a percentile</strong> — far too few points to rank
+            against. It exists to show whether the scoring thresholds bracket what has
+            actually occurred.
         </p>
         ${metricInfoHtml('mnavHistory')}
     </section>`;
