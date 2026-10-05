@@ -1,21 +1,21 @@
 {
-  "generated": "2026-10-05T10:18:53.628Z",
+  "generated": "2026-10-05T21:29:54.098Z",
   "note": "Strive capital structure parsed from the most recent 8-K bitcoin-purchase announcement, which tabulates holdings, share classes and preferred. Filed roughly weekly, so this is far fresher than the quarterly 10-Q figures.",
   "company": "ASST",
-  "asOf": "2026-09-25",
-  "filed": "2026-09-28",
-  "accession": "0001628280-26-063653",
-  "btcHoldings": 27462,
-  "classA": 88453685,
-  "classB": 9198036,
-  "effectiveShares": 97651721,
-  "dilutedShares": 100776795,
-  "warrantShares": 25349806,
-  "sataShares": 12193180,
+  "asOf": "2026-10-02",
+  "filed": "2026-10-05",
+  "accession": "0001628280-26-064753",
+  "btcHoldings": 29462,
+  "classA": 91708804,
+  "classB": 9230182,
+  "effectiveShares": 100938986,
+  "dilutedShares": 103714772,
+  "warrantShares": 23249706,
+  "sataShares": 13498082,
   "sataStatedAmount": 100,
-  "cashUsd": 248800000,
-  "strcFairValueUsd": 49763000,
-  "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026063653/asst-20260928.htm",
+  "cashUsd": 284700000,
+  "strcFairValueUsd": 50202000,
+  "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026064753/asst-20261005.htm",
   "history": [
     {
       "asOf": "2026-07-24",
@@ -176,6 +176,22 @@
       "cashUsd": 248800000,
       "strcFairValueUsd": 49763000,
       "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026063653/asst-20260928.htm"
+    },
+    {
+      "asOf": "2026-10-02",
+      "filed": "2026-10-05",
+      "accession": "0001628280-26-064753",
+      "btcHoldings": 29462,
+      "classA": 91708804,
+      "classB": 9230182,
+      "effectiveShares": 100938986,
+      "dilutedShares": 103714772,
+      "warrantShares": 23249706,
+      "sataShares": 13498082,
+      "sataStatedAmount": 100,
+      "cashUsd": 284700000,
+      "strcFairValueUsd": 50202000,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026064753/asst-20261005.htm"
     }
   ]
 }
