@@ -178,8 +178,36 @@ a day):
 node scripts/snapshot-onchain.mjs     # MVRV, NUPL, Puell
 node scripts/snapshot-etf.mjs         # US spot ETF net flows
 node scripts/snapshot-treasuries.mjs  # MSTR/ASST prices, holdings, share counts
+node scripts/snapshot-asst-8k.mjs     # Strive capital table from its weekly 8-K
+node scripts/validate-data.mjs        # check every data file before committing
 node scripts/check-alerts.mjs         # recompute score, detect band change
 ```
+
+### Data files are the contract
+
+The scripts and the dashboard never import each other. The only link between
+them is a JSON file in `data/`, so a change to what a script writes is
+invisible to the code that reads it until something breaks on the live site.
+Each file, who writes it, and who depends on it:
+
+| File | Written by | Read by |
+|---|---|---|
+| `data/treasuries.json` | `scripts/snapshot-treasuries.mjs` | `js/data.js` (`fetchTreasuries`) |
+| `data/onchain.json` | `scripts/snapshot-onchain.mjs` | `js/data.js` (`loadOnchainSnapshot`) and `scripts/check-alerts.mjs` |
+| `data/etf-flows.json` | `scripts/snapshot-etf.mjs` | `js/data.js` (`fetchEtfFlows`) and `scripts/check-alerts.mjs` |
+| `data/asst-capital.json` | `scripts/snapshot-asst-8k.mjs` | `js/issuer.js` (`loadAsstCapital`) |
+| `data/alert-state.json` | `scripts/check-alerts.mjs` | `scripts/check-alerts.mjs` (next run, for band changes) |
+
+`scripts/validate-data.mjs` checks each file against what its readers need,
+and against the last committed version so a refresh can never make data
+older or thinner unnoticed. In the workflow it runs with `--restore`: a file
+that fails goes back to its committed version and the run is marked failed.
+`onchain.json` and `etf-flows.json` have two readers each, so a bad write there
+would break the dashboard and the alert email together.
+
+`alert-state.json` also records which source served each input on the last
+run (`sources`) and which signals were missing (`missingSignals`), because the
+workflow logs are not readable without admin access.
 
 These run automatically via the daily workflow; the commands above are for
 running them by hand.

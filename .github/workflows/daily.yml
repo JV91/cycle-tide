@@ -64,6 +64,14 @@ jobs:
         continue-on-error: true
         run: node scripts/snapshot-asst-8k.mjs
 
+      # The data files are the only link between these scripts and the site;
+      # nothing checks across that boundary otherwise. A file that fails is put
+      # back to its committed version, so the site keeps serving good data and
+      # the alert below reads validated inputs. The run is failed at the end.
+      - name: Validate data files
+        id: validate
+        run: node scripts/validate-data.mjs --restore
+
       - name: Compute score and detect band change
         id: check
         run: node scripts/check-alerts.mjs
@@ -111,3 +119,11 @@ jobs:
             This is a historical risk/reward context tool, not financial advice.
             A band change means conditions moved relative to prior cycles — it
             is not a recommendation to trade.
+
+      # Last, so the files that passed are already committed: a rejected file
+      # turns the run red instead of the failure staying invisible.
+      - name: Fail if a data file was rejected
+        if: steps.validate.outputs.invalid != ''
+        run: |
+          echo "::error::Rejected and restored to the committed version: ${{ steps.validate.outputs.invalid }}"
+          exit 1
