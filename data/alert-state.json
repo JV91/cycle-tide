@@ -4,9 +4,9 @@
   "confidence": 100,
   "staleWeight": 28,
   "staleNote": "MVRV Z-Score 7d, NUPL 7d, Puell Multiple 7d",
-  "price": 81755,
+  "price": 81855,
   "date": "2026-10-09",
-  "previousBand": "NO CALL",
+  "previousBand": "ACCUMULATE (Phase 2)",
   "missingSignals": [],
   "sources": {
     "priceHistory": "data-api.binance.vision",
