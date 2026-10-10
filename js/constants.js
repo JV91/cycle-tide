@@ -35,6 +35,11 @@
 // read 41 (HOLD) at the 2025 all-time high, these seven read 24. Lows are
 // unchanged (97 / 89 vs 94 / 89).
 //
+// One further change the same day: the 200-week MA multiple is now ranked
+// against its own last four years instead of scored on a fixed 1x-4x scale
+// (see computeMa200wRank in indicators.js). Composite at the 2025 top went
+// 24 -> 17; today 53 -> 48.
+//
 // The remaining weights are the old ones rescaled to 100, not re-tuned: with
 // four lows and three tops in the data there is no basis for fitting weights.
 // The one rounding point went to Fear & Greed, right at all seven turning
@@ -94,26 +99,30 @@ const SIGNAL_DEFS = [
     },
     {
         key: 'ma200w_mult',
-        label: '200-Week MA Multiple',
+        label: '200-Week MA Multiple (4-year rank)',
         category: 'price',
         weight: 15,
-        // <1.0x = deep-bottom zone (100) ... >4x = historically stretched (0)
+        // v is the share (0-1) of the last four years in which price sat LOWER
+        // against its 200-week average than it does now. 1 = the most stretched
+        // reading in four years (0); 0 = the least (100). See computeMa200wRank
+        // for why this replaced the fixed 1x-4x scale.
         score(v) {
             if (v === null) return null;
-            return clamp(mapRange(v, 4, 1, 0, 100), 0, 100);
+            return clamp(mapRange(v, 1, 0, 0, 100), 0, 100);
         },
-        fmt: v => v === null ? '—' : v.toFixed(2) + 'x',
+        fmt: (v, multiple) => v === null ? '—'
+            : (typeof multiple === 'number' ? multiple.toFixed(2) + 'x — ' : '')
+              + `higher than ${Math.round(v * 100)}% of the last 4 years`,
         info: {
-            tracks: 'Current price divided by the 200-week (1,400-day) moving average — how far price has extended above its long-run trend floor.',
-            why: 'The 200-week MA has acted as a durable floor for Bitcoin\'s entire history. Price has touched or briefly pierced it near every major bottom (2015, Mar 2020, Nov 2022) and has never spent long below it.',
+            tracks: 'Current price divided by the 200-week (1,400-day) moving average, then ranked against that same figure over the last four years. It asks how stretched price is above its long-run trend compared with recent history.',
+            why: 'The 200-week MA has acted as a durable floor for Bitcoin’s entire history: price has touched or briefly pierced it near every major bottom (2015, Mar 2020, Nov 2022, mid-2026). How far price climbs above it marks how extended a bull run has become.',
             scale: [
-                ['below 1.0x', 'at or under the floor — rare, deep bottom', 'good'],
-                ['1.0x to 2.0x', 'accumulation to mid-bull', 'good'],
-                ['2.0x to 3.0x', 'extended', 'warn'],
-                ['above 4x', 'historically stretched', 'bad'],
+                ['lower than most of the last 4 years', 'near the long-run floor — accumulation', 'good'],
+                ['around the middle', 'neither stretched nor cheap', 'warn'],
+                ['higher than 80%+ of the last 4 years', 'extended — distribution watch', 'bad'],
             ],
-            caveat: 'The ceiling has compressed each cycle as Bitcoin matures, so old multiples like 5x are unlikely to recur. Also needs 1,400 days of data, so it cannot be computed before mid-2021 from this price source.',
-            source: 'Self-computed from Binance daily candles.',
+            caveat: 'This used to be scored on a fixed scale where 4x meant "sell". Peaks have shrunk every cycle (3.79x in 2021, 2.33x in 2025), so that scale read a comfortable 56 at the 2025 all-time high. Ranking fixes that but has its own costs: it was slightly less sharp at the 2021 tops (12 and 21 against 0 and 7), read 82 rather than 100 at the 2026 low, and could only be tested on three tops in two cycles. A long flat market would also make a small rise look extreme.',
+            source: 'Self-computed from daily closes: Binance from Aug 2017, Bitstamp before that (data/btc-history.json) so the four-year window reaches back to 2019.',
         },
     },
     {

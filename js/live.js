@@ -185,7 +185,9 @@ function paintPending() {
 function recomputeDerivedSeries() {
     const daily = SERIES.daily;
     SERIES.ath_drawdown = computeAthDrawdown(daily).series;
-    SERIES.ma200w_mult  = computeMa200wMultiple(daily).series;
+    const ma = computeMa200wRank(daily, SERIES.btcHistory);
+    SERIES.ma200w_mult  = ma.series;
+    SERIES.ma200w_raw   = ma.multiples;
     SERIES.rsi_monthly  = computeMonthlyRSI(daily).series;
 }
 
@@ -200,7 +202,9 @@ function scheduleLiveRerender() {
         // Price-derived signals only — the on-chain series are unchanged by a
         // price tick, so there's no reason to touch them here.
         SERIES.ath_drawdown = computeAthDrawdown(SERIES.daily).series;
-        SERIES.ma200w_mult  = computeMa200wMultiple(SERIES.daily).series;
+        const ma = computeMa200wRank(SERIES.daily, SERIES.btcHistory);
+        SERIES.ma200w_mult  = ma.series;
+        SERIES.ma200w_raw   = ma.multiples;
         renderFor(last);
     }, 1000);
 }

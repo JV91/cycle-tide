@@ -16,7 +16,7 @@ accumulation-favourable.
 |---|---|---|---|
 | Drawdown from ATH | 20 | Price | self-computed |
 | Fear & Greed Index | 16 | Sentiment | Alternative.me |
-| 200-Week MA Multiple | 15 | Price | self-computed |
+| 200-Week MA Multiple (4-year rank) | 15 | Price | self-computed |
 | US Spot ETF Net Flow (30d) | 15 | Institutional | TFTC (CC BY 4.0) |
 | Stablecoin Supply Ratio | 14 | Liquidity | DefiLlama |
 | Net Unrealized Profit/Loss | 12 | On-chain | bitcoin-data.com |
@@ -27,7 +27,7 @@ tops low):
 
 | 2018 bottom | 2020 low | 2021 tops | 2022 bottom | 2025 top | 2026 low |
 |---|---|---|---|---|---|
-| 95 | 88 | 21 / 23 | 95 | 24 | 88 |
+| 95 | 91 | 19 / 26 | 95 | 17 | 86 |
 
 Readings before 2022 use only the signals whose data reaches back that far
 (58–73% of the weight).
@@ -40,7 +40,19 @@ tops, Puell ranged only 81–100, and MVRV Z read 64 at the 2025 top while
 duplicating NUPL (0.95 correlation). With them the model read 41 at the 2025
 all-time high; without them, 24. The remaining weights are the old ones
 rescaled to 100, not re-tuned — four lows and three tops is no basis for
-fitting weights. Five of the seven overlap heavily (drawdown, NUPL, 200-week
+fitting weights.
+
+**The 200-week MA multiple is ranked, not scored on a fixed scale.** It used
+to run from 1× (buy) to 4× (sell), a scale set by older cycles: the multiple
+peaked at 3.79× in 2021 but only 2.33× in 2025, so it read 56 at the 2025
+all-time high. It is now ranked against its own last four years, which read 10
+at that top and reached the warning zone 138 days earlier with 14% of the rise
+left. The cost: slightly less sharp at the 2021 tops, 82 rather than 100 at the
+2026 low, and tested on only three tops. Drawdown from ATH was tested the same
+way and left fixed — ranking it made returns after its "top" readings higher
+than after its "bottom" readings.
+
+Five of the seven overlap heavily (drawdown, NUPL, 200-week
 MA, RSI), so read this as about five independent ideas, not seven.
 
 Click any signal in the dashboard to see what it tracks, why it's predictive,
@@ -213,6 +225,7 @@ Each file, who writes it, and who depends on it:
 | `data/onchain.json` | `scripts/snapshot-onchain.mjs` | `js/data.js` (`loadOnchainSnapshot`) and `scripts/check-alerts.mjs` |
 | `data/etf-flows.json` | `scripts/snapshot-etf.mjs` | `js/data.js` (`fetchEtfFlows`) and `scripts/check-alerts.mjs` |
 | `data/asst-capital.json` | `scripts/snapshot-asst-8k.mjs` | `js/issuer.js` (`loadAsstCapital`) |
+| `data/btc-history.json` | `scripts/build-btc-history.mjs` (once; static pre-2017 closes) | `js/data.js` (`fetchBtcHistory`) and `scripts/check-alerts.mjs` |
 | `data/alert-state.json` | `scripts/check-alerts.mjs` | `scripts/check-alerts.mjs` (next run, for band changes) |
 
 `scripts/validate-data.mjs` checks each file against what its readers need,

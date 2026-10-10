@@ -33,6 +33,49 @@ function computeMa200wMultiple(daily) {
     return { series, latest: series.length ? series[series.length - 1].value : null };
 }
 
+// The 200-week multiple, ranked against its own last four years.
+//
+// The multiple used to be scored on a fixed scale (1x = buy, 4x = sell). That
+// scale was set by older, larger cycles: the multiple peaked at 3.79x in 2021
+// but only 2.33x in 2025, so the fixed score read 56 at the 2025 all-time high
+// and never reached the warning zone. Ranking against the trailing 1,460 days
+// (one full cycle) asks "how stretched is this compared with recent history"
+// instead, which keeps working as cycles flatten: the same 2025 top ranks
+// above 90% of the prior four years and scores 10.
+//
+// Tested on Bitstamp history from 2011 (2026-10-10), fixed vs ranked:
+//   2020 low 99/100 · 2021 tops 0,7 / 12,21 · 2022 bottom 100/100
+//   2025 top 56 / 10 · 2026 low 100 / 82
+// Ranked reached the warning zone 138 days before the 2025 top with 14% of the
+// rise left (fixed: never), and sat there on 5% of days against 13%. A 2-year
+// window was rejected: 29% of days in the warning zone and returns after its
+// warnings were higher than after its buy readings.
+//
+// `history` is pre-2017 closes ([ts, close] rows, data/btc-history.json) joined
+// in front of the live feed so the average and its four-year window exist for
+// 2019 onward rather than only from late 2024.
+//
+// Returns the rank as a 0-1 share of the window that was LOWER than today
+// (1 = most stretched in four years), plus the raw multiples for display.
+function computeMa200wRank(daily, history, windowDays = 1460, minObs = 1200) {
+    const firstLive = daily.length ? daily[0].ts : Infinity;
+    const older = (history || [])
+        .map(r => ({ ts: r[0], close: r[1] }))
+        .filter(r => r.ts < firstLive && r.close > 0);
+    const multiples = computeMa200wMultiple(older.concat(daily)).series.filter(p => p.value !== null);
+
+    const series = [];
+    for (let i = 0; i < multiples.length; i++) {
+        const lo = Math.max(0, i - windowDays);
+        const n = i - lo;
+        if (n < minObs) continue;
+        let below = 0;
+        for (let k = lo; k < i; k++) if (multiples[k].value < multiples[i].value) below++;
+        series.push({ ts: multiples[i].ts, value: below / n });
+    }
+    return { series, multiples };
+}
+
 // Resample daily closes to month-end closes, then standard RSI(14).
 function computeMonthlyRSI(daily) {
     if (!daily.length) return { series: [], latest: null };

@@ -138,6 +138,20 @@ const CHECKS = {
         return e;
     },
 
+    // Static pre-2017 price history. It should never change; if it is ever
+    // truncated or reordered, the 200-week average silently loses its window.
+    'data/btc-history.json'(cur, prev) {
+        const e = [];
+        const s = cur.series;
+        if (!Array.isArray(s) || s.length < 1500) { e.push(`series: expected 1500+ rows, got ${Array.isArray(s) ? s.length : typeof s}`); return e; }
+        for (let i = 0; i < s.length; i++) {
+            if (!Array.isArray(s[i]) || !isNum(s[i][0]) || !(s[i][1] > 0)) { e.push(`series[${i}]: expected [timestamp, close]`); break; }
+            if (i && s[i][0] <= s[i - 1][0]) { e.push(`series: not ascending at row ${i}`); break; }
+        }
+        if (Array.isArray(prev?.series) && s.length < prev.series.length) e.push(`series shrank from ${prev.series.length} to ${s.length} rows`);
+        return e;
+    },
+
     'data/etf-flows.json'(cur, prev) {
         const e = [];
         checkSeries(e, 'series', cur.series, 'value', 100);

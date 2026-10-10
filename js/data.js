@@ -299,6 +299,19 @@ function unavailableReason(signalKey) {
 // chart endpoint sends no CORS headers, so a browser request is blocked
 // outright. scripts/snapshot-treasuries.mjs fetches it server-side instead.
 
+// Pre-2017 BTC closes (static file). Joined in front of the Binance feed only
+// for the 200-week average, whose four-year ranking needs far more history
+// than Binance has. Never changes, so it is fetched once and deliberately not
+// cleared by resetSnapshotCaches().
+let _btcHistoryPromise = null;
+function fetchBtcHistory() {
+    if (!_btcHistoryPromise) {
+        _btcHistoryPromise = fetchSnapshot('data/btc-history.json')
+            .then(j => Array.isArray(j?.series) ? j.series : []);
+    }
+    return _btcHistoryPromise;
+}
+
 // ── Treasury reference data (committed snapshot) ────────────────────────────
 let _treasuryPromise = null;
 function fetchTreasuries() {

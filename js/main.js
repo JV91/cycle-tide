@@ -10,13 +10,14 @@ let SERIES = null;
 async function loadAllSignals() {
     // NUPL is the only on-chain series left in the model, so bitcoin-data.com
     // (10 requests/hour) now costs one request per load instead of three.
-    const [daily, nupl, stableSupply, fearGreed, etfFlows] =
+    const [daily, nupl, stableSupply, fearGreed, etfFlows, btcHistory] =
         await Promise.all([
             fetchBTCDaily(),
             fetchNupl(),
             fetchStablecoinSupply(),
             fetchFearGreed(),
             fetchEtfFlows(),
+            fetchBtcHistory(),
         ]);
 
     // Issuer-published live figures (MSTR) and the 8-K capital table (ASST).
@@ -30,10 +31,14 @@ async function loadAllSignals() {
 
     const supply = estimateCirculatingSupply(daily[daily.length - 1].ts);
 
+    const ma200w = computeMa200wRank(daily, btcHistory);
+
     SERIES = {
         daily,
+        btcHistory,                      // kept so live ticks can re-rank
+        ma200w_raw:   ma200w.multiples,  // the multiple itself, for display
         ath_drawdown: computeAthDrawdown(daily).series,
-        ma200w_mult:  computeMa200wMultiple(daily).series,
+        ma200w_mult:  ma200w.series,
         rsi_monthly:  computeMonthlyRSI(daily).series,
         etf_flow:     etfFlows ? computeEtfFlowPercentile(etfFlows) : [],
         ssr:          stableSupply ? computeSSRPercentileSeries(daily, supply, stableSupply) : [],
@@ -253,6 +258,10 @@ function renderFor(ts) {
     conf.classList.toggle('conf-stale', stale.length > 0);
 
     renderScoreDelta(ts, composite);
+    // The 200-week row is scored on a rank but people know it as a multiple,
+    // so hand the multiple for this date to its formatter as well.
+    const maRow = breakdown.find(b => b.key === 'ma200w_mult');
+    if (maRow) maRow.extra = latestAsOf(SERIES.ma200w_raw, ts + 86400000 - 1);
     renderBreakdown(breakdown);
     renderDateControls(ctx.actualTs);
 }
@@ -374,7 +383,7 @@ function renderBreakdown(breakdown) {
                     ${item.score === null
                         ? escapeHtml('not scored — ' +
                             (unavailableReason(item.key) || 'no data for this date'))
-                        : escapeHtml(String(item.fmt(item.raw)))}
+                        : escapeHtml(String(item.fmt(item.raw, item.extra)))}
                 </div>
             </button>
             ${info ? `

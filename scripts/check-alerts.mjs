@@ -119,6 +119,9 @@ if (!daily.length) {
 
 const snap = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'onchain.json'), 'utf8')).series;
 const etf = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'etf-flows.json'), 'utf8')).series;
+// Pre-2017 closes, joined in front of the live feed for the 200-week average
+// so its four-year ranking has enough history (see computeMa200wRank).
+const btcHistory = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'btc-history.json'), 'utf8')).series;
 
 const fg = await get('https://api.alternative.me/fng/?limit=400')
     .then(r => JSON.parse(r.body).data.map(d => ({ ts: +d.timestamp * 1000, value: +d.value }))
@@ -128,7 +131,7 @@ const stable = await get('https://stablecoins.llama.fi/stablecoincharts/all')
         .filter(x => x.value > 0)).catch(() => []);
 
 const ind = loadModule('indicators.js',
-    ['computeAthDrawdown', 'computeMa200wMultiple', 'computeMonthlyRSI',
+    ['computeAthDrawdown', 'computeMa200wRank', 'computeMonthlyRSI',
      'computeSSRPercentileSeries', 'estimateCirculatingSupply', 'computeEtfFlowPercentile']);
 
 // latestAsOf is defined in data.js alongside browser-only code; reimplement.
@@ -137,7 +140,7 @@ const latest = s => (s && s.length) ? s[s.length - 1].value : null;
 const supply = ind.estimateCirculatingSupply(daily[daily.length - 1].ts);
 const values = {
     ath_drawdown: latest(ind.computeAthDrawdown(daily).series),
-    ma200w_mult:  latest(ind.computeMa200wMultiple(daily).series),
+    ma200w_mult:  latest(ind.computeMa200wRank(daily, btcHistory).series),
     rsi_monthly:  latest(ind.computeMonthlyRSI(daily).series),
     etf_flow:     latest(ind.computeEtfFlowPercentile(etf)),
     ssr:          latest(ind.computeSSRPercentileSeries(daily, supply, stable)),
