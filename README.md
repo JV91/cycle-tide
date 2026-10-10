@@ -9,22 +9,39 @@ instead of guessing.
 
 ## The score
 
-Eleven signals combine into a 0–100 composite. Higher = historically
+Seven signals combine into a 0–100 composite. Higher = historically
 accumulation-favourable.
 
 | Signal | Weight | Category | Source |
 |---|---|---|---|
-| Drawdown from ATH | 13 | Price | self-computed |
-| MVRV Z-Score | 12 | On-chain | bitcoin-data.com |
-| 200-Week MA Multiple | 10 | Price | self-computed |
-| US Spot ETF Net Flow (30d) | 10 | Institutional | TFTC (CC BY 4.0) |
-| Fear & Greed Index | 10 | Sentiment | Alternative.me |
-| Stablecoin Supply Ratio | 9 | Liquidity | DefiLlama |
-| Net Unrealized Profit/Loss | 8 | On-chain | bitcoin-data.com |
-| Puell Multiple | 8 | On-chain | bitcoin-data.com |
-| Pi Cycle Top | 8 | Price | self-computed |
-| Perp Funding Rate | 7 | Leverage | Binance |
-| Monthly RSI (14) | 5 | Price | self-computed |
+| Drawdown from ATH | 20 | Price | self-computed |
+| Fear & Greed Index | 16 | Sentiment | Alternative.me |
+| 200-Week MA Multiple | 15 | Price | self-computed |
+| US Spot ETF Net Flow (30d) | 15 | Institutional | TFTC (CC BY 4.0) |
+| Stablecoin Supply Ratio | 14 | Liquidity | DefiLlama |
+| Net Unrealized Profit/Loss | 12 | On-chain | bitcoin-data.com |
+| Monthly RSI (14) | 8 | Price | self-computed |
+
+What the composite read at each cycle turning point (lows should be high,
+tops low):
+
+| 2018 bottom | 2020 low | 2021 tops | 2022 bottom | 2025 top | 2026 low |
+|---|---|---|---|---|---|
+| 95 | 88 | 21 / 23 | 95 | 24 | 88 |
+
+Readings before 2022 use only the signals whose data reaches back that far
+(58–73% of the weight).
+
+**Four signals were removed on 2026-10-10** — MVRV Z-Score, Puell Multiple,
+Pi Cycle Top and the perp funding rate. Scored at every turning point their
+data covers, they no longer separated tops from bottoms: funding read 61–65 at
+every turning point since 2022, Pi Cycle read 78 at both the 2021 and 2025
+tops, Puell ranged only 81–100, and MVRV Z read 64 at the 2025 top while
+duplicating NUPL (0.95 correlation). With them the model read 41 at the 2025
+all-time high; without them, 24. The remaining weights are the old ones
+rescaled to 100, not re-tuned — four lows and three tops is no basis for
+fitting weights. Five of the seven overlap heavily (drawdown, NUPL, 200-week
+MA, RSI), so read this as about five independent ideas, not seven.
 
 Click any signal in the dashboard to see what it tracks, why it's predictive,
 its threshold bands, and — importantly — its caveats.
@@ -53,9 +70,9 @@ Amounts live in `ALLOC_PLAN` at the top of `js/allocation.js`.
 ## Treasury company tabs
 
 Two additional tabs cover **Strategy (MSTR)** and **Strive (ASST)** — Bitcoin
-treasury companies. They deliberately show **no 0–100 score**: eight of the
-eleven signals are Bitcoin-network data (MVRV, NUPL, Puell, ETF flows, Pi
-Cycle) that does not exist for an equity, and renormalising the rest would
+treasury companies. They deliberately show **no 0–100 score**: most of the
+signals are Bitcoin-market data (NUPL, ETF flows, Fear & Greed, stablecoin
+supply) that does not exist for an equity, and renormalising the rest would
 produce a confident-looking number measuring something it cannot see.
 
 Instead they show what is directly measurable: price and drawdown, BTC held
@@ -117,8 +134,8 @@ issuance and is indicative rather than exact between filings.
 
 - **Three complete cycles** is a very small sample to generalise from.
 - **The ETF era (2024+) changed market structure.** Indicators calibrated on
-  prior cycles may not behave the same way; Pi Cycle in particular has not
-  re-triggered since.
+  prior cycles may not behave the same way — four were removed for exactly
+  this reason (see above).
 - **Peak magnitudes decay every cycle** (+57,400% → +13,133% → +2,126% → +712%),
   so any forward price band is guesswork, not a forecast.
 - **The forward projection is schedule-based**, drawn through the average
@@ -175,7 +192,7 @@ Refresh the snapshot periodically (daily is plenty — these metrics update once
 a day):
 
 ```bash
-node scripts/snapshot-onchain.mjs     # MVRV, NUPL, Puell
+node scripts/snapshot-onchain.mjs     # NUPL
 node scripts/snapshot-etf.mjs         # US spot ETF net flows
 node scripts/snapshot-treasuries.mjs  # MSTR/ASST prices, holdings, share counts
 node scripts/snapshot-asst-8k.mjs     # Strive capital table from its weekly 8-K
@@ -221,10 +238,10 @@ TFTC alone is sufficient.
 
 All free, no API keys required:
 
-- [bitcoin-data.com](https://bitcoin-data.com) — MVRV Z-Score, NUPL, Puell Multiple
+- [bitcoin-data.com](https://bitcoin-data.com) — NUPL
 - [DefiLlama](https://defillama.com) — stablecoin supply
 - [Alternative.me](https://alternative.me/crypto/fear-and-greed-index/) — Fear & Greed Index
-- [Binance](https://binance.com) — price history, live price stream, funding rates
+- [Binance](https://binance.com) — price history, live price stream
 - [TFTC](https://www.tftc.io/bitcoin-etf-flows) — US spot BTC ETF daily net flows
   (CC BY 4.0; TFTC compiles these from SoSoValue and Farside Investors)
 - [CoinGecko](https://www.coingecko.com) — public-company BTC treasury holdings

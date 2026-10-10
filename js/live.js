@@ -5,7 +5,6 @@
 // new number, so each source gets its own cadence:
 //
 //   BTC price      — WebSocket stream (continuous ticks)
-//   Funding rate   — 5 min  (settles every 8h)
 //   Fear & Greed   — 60 min (updates daily)
 //   On-chain       — left to the 1h cache in data.js (updates daily)
 //
@@ -25,7 +24,6 @@ const LIVE = {
 };
 
 const LIVE_INTERVALS = {
-    funding: 5 * 60 * 1000,
     fearGreed: 60 * 60 * 1000,
     restFallback: 15 * 1000,
 };
@@ -189,7 +187,6 @@ function recomputeDerivedSeries() {
     SERIES.ath_drawdown = computeAthDrawdown(daily).series;
     SERIES.ma200w_mult  = computeMa200wMultiple(daily).series;
     SERIES.rsi_monthly  = computeMonthlyRSI(daily).series;
-    SERIES.pi_cycle     = computePiCycle(daily).series;
 }
 
 // Recomputing the whole composite on every trade tick would be wasteful, so
@@ -204,7 +201,6 @@ function scheduleLiveRerender() {
         // price tick, so there's no reason to touch them here.
         SERIES.ath_drawdown = computeAthDrawdown(SERIES.daily).series;
         SERIES.ma200w_mult  = computeMa200wMultiple(SERIES.daily).series;
-        SERIES.pi_cycle     = computePiCycle(SERIES.daily).series;
         renderFor(last);
     }, 1000);
 }
@@ -268,11 +264,6 @@ function startPollers() {
         }, interval);
         LIVE.pollTimers.push(timer);
     };
-
-    poll(async () => {
-        const f = await fetchFundingRate();
-        if (f) { SERIES.funding = f; refreshIfLive(); }
-    }, LIVE_INTERVALS.funding);
 
     poll(async () => {
         const fg = await fetchFearGreed();

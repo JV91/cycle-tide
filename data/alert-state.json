@@ -1,15 +1,14 @@
 {
-  "score": 64,
-  "band": "ACCUMULATE (Phase 2)",
+  "score": 53,
+  "band": "HOLD",
   "confidence": 100,
-  "staleWeight": 28,
-  "staleNote": "MVRV Z-Score 7d, NUPL 7d, Puell Multiple 7d",
-  "price": 82896,
+  "staleWeight": 12,
+  "staleNote": "Net Unrealized Profit/Loss 7d",
+  "price": 82836,
   "date": "2026-10-10",
-  "previousBand": "ACCUMULATE (Phase 2)",
+  "previousBand": "HOLD",
   "missingSignals": [],
   "sources": {
-    "priceHistory": "data-api.binance.vision",
-    "funding": "Deribit (earlier sources failed: Binance: HTTP 451; Bybit: HTTP 403)"
+    "priceHistory": "api.binance.com"
   }
 }

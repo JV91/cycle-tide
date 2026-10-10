@@ -1,7 +1,7 @@
 // ── Cycle Tide — treasury-company comparison view ──────────────────────────
 //
-// MSTR and Strive are EQUITIES, not Bitcoin. Most of the cycle model (MVRV,
-// NUPL, Puell, ETF flows, Pi Cycle) is Bitcoin-network data that simply does
+// MSTR and Strive are EQUITIES, not Bitcoin. Most of the cycle model (NUPL,
+// ETF flows, Fear & Greed) is Bitcoin-network data that simply does
 // not exist for a stock, so these tabs deliberately show NO 0-100 score.
 // Presenting one would look authoritative while measuring something it cannot
 // see. What they show instead is all directly measurable: price action,

@@ -111,9 +111,14 @@ function projectCycleDates() {
 // extremes rather than 0/100 — the composite rarely pins at either end.
 function projectScoreSeries(lastRealTs, lastRealScore) {
     const d = projectCycleDates();
-    const SCORE_AT_BOTTOM = 88;
-    const SCORE_AT_TOP     = 18;
-    const SCORE_AT_HALVING = 62;
+    // What the seven-signal model actually read at past turning points:
+    // lows 95 / 88 / 95 / 88, tops 21 / 23 / 24. The two halvings it covers
+    // read 73 (2020) and 27 (2024, when ETF inflows had price near its high
+    // on halving day), so the halving anchor is their midpoint and the least
+    // certain of the three.
+    const SCORE_AT_BOTTOM = 92;
+    const SCORE_AT_TOP     = 23;
+    const SCORE_AT_HALVING = 50;
 
     // The cycle bottom is behind us, so the path runs from here toward the
     // 2028 halving and the top after it — no projected decline into a low the

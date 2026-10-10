@@ -1,22 +1,52 @@
 // ── Cycle Tide — signal definitions & weights ───────────────────────────────
-// Composite "Cycle Score" (0-100): weighted blend of on-chain, leverage,
-// dry-powder, sentiment and price-technical signals. Higher = more
+// Composite "Cycle Score" (0-100): weighted blend of price-technical, on-chain,
+// dry-powder, institutional-flow and sentiment signals. Higher = more
 // historically accumulation-favorable; lower = more distribution-favorable.
 //
 // Sources (all free / no-key unless noted):
-//   bitcoin-data.com   — MVRV Z-Score, NUPL, Puell Multiple
+//   bitcoin-data.com     — NUPL
 //   stablecoins.llama.fi — total stablecoin supply (SSR dry-powder proxy)
-//   api.alternative.me  — Crypto Fear & Greed Index
-//   fapi.binance.com    — funding rate, open interest, daily klines (price)
-//   tftc.io (snapshot)  — US spot BTC ETF daily net flows (CC BY 4.0)
-//   Self-computed from klines — ATH drawdown, 200WMA multiple, Pi Cycle, monthly RSI
+//   api.alternative.me   — Crypto Fear & Greed Index
+//   Binance (spot)       — daily klines (price)
+//   tftc.io (snapshot)   — US spot BTC ETF daily net flows (CC BY 4.0)
+//   Self-computed from klines — ATH drawdown, 200WMA multiple, monthly RSI
+//
+// SEVEN SIGNALS, DOWN FROM ELEVEN (2026-10-10). Four were removed after each
+// was scored at every cycle turning point its data covers (high = right at a
+// low, low = right at a top):
+//
+//                 2020 low  2021 tops  2022 bottom  2025 top  2026 low
+//   funding          100     0 / 19        65          62        61
+//   pi_cycle          94     0 / 78       100          78       100
+//   puell              -        -         100          81        96
+//   mvrv_z             -        -         100          64        96
+//
+//   funding   worked in 2020-21, then read 61-65 at every turning point since
+//             2022, top or bottom; over the following year high and low
+//             readings led to the same return (79% vs 81%).
+//   pi_cycle  read 78 ("fine") at both the late-2021 and the 2025 top, and
+//             sat at its maximum on 35% of all days.
+//   puell     ranged only 81-100 across the last top and both lows.
+//   mvrv_z    read 64 at the 2025 top (thresholds set for the larger peaks of
+//             older cycles) and duplicated NUPL (0.95 correlation), which
+//             caught the same top at 25.
+//
+// Together they contributed ~11 points of constant uplift: the 11-signal model
+// read 41 (HOLD) at the 2025 all-time high, these seven read 24. Lows are
+// unchanged (97 / 89 vs 94 / 89).
+//
+// The remaining weights are the old ones rescaled to 100, not re-tuned: with
+// four lows and three tops in the data there is no basis for fitting weights.
+// The one rounding point went to Fear & Greed, right at all seven turning
+// points. Five of the seven (drawdown, NUPL, 200WMA, RSI and the removed
+// MVRV) overlap heavily, so treat this as about five independent ideas.
 
 const SIGNAL_DEFS = [
     {
         key: 'ath_drawdown',
         label: 'Drawdown from ATH',
         category: 'price',
-        weight: 13,
+        weight: 20,
         // Historical bottoms clustered around -75% to -85% from ATH; 0% = new ATH.
         // Score 100 at -80% drawdown, tapering to 0 at a new ATH.
         score(v) {
@@ -38,34 +68,10 @@ const SIGNAL_DEFS = [
         },
     },
     {
-        key: 'mvrv_z',
-        label: 'MVRV Z-Score',
-        category: 'onchain',
-        weight: 12,
-        // <0 = historical capitulation (score 100). >7 = historical top (score 0).
-        score(v) {
-            if (v === null) return null;
-            return clamp(mapRange(v, 7, 0, 0, 100), 0, 100);
-        },
-        fmt: v => v === null ? '—' : `z = ${v.toFixed(2)}`,
-        info: {
-            tracks: 'Market cap versus realised cap — the aggregate price at which every coin last moved — normalised by volatility. In plain terms: how far the market has stretched above what holders actually paid.',
-            why: 'Tops form when unrealised profit is extreme and holders are heavily incentivised to sell; bottoms form when the average holder is underwater. It is the single most reliable cycle-position indicator in this model, which is why it carries the joint-highest weight.',
-            scale: [
-                ['below 0', 'market cap under cost basis — capitulation', 'good'],
-                ['0 to 2', 'accumulation / early bull', 'good'],
-                ['2 to 5', 'mid-to-late bull', 'warn'],
-                ['above 7', 'extreme top zone (2013, 2017, Apr 2021)', 'bad'],
-            ],
-            caveat: 'Peak Z-scores have declined each cycle (2021 topped at ~6.4, below 2017), so a fixed ">7 = top" rule may be too strict now.',
-            source: 'bitcoin-data.com (free tier, 10 requests/hour).',
-        },
-    },
-    {
         key: 'nupl',
         label: 'Net Unrealized Profit/Loss',
         category: 'onchain',
-        weight: 8,
+        weight: 12,
         // <0 Capitulation (100) ... >0.75 Euphoria (0)
         score(v) {
             if (v === null) return null;
@@ -87,66 +93,10 @@ const SIGNAL_DEFS = [
         },
     },
     {
-        key: 'puell',
-        label: 'Puell Multiple',
-        category: 'onchain',
-        weight: 8,
-        // <0.5 miner capitulation (100) ... >4 euphoric top (0)
-        score(v) {
-            if (v === null) return null;
-            return clamp(mapRange(v, 4, 0.5, 0, 100), 0, 100);
-        },
-        fmt: v => v === null ? '—' : v.toFixed(2) + 'x',
-        info: {
-            tracks: 'Daily miner revenue in USD versus its own 365-day average — how well miners are being paid relative to their recent norm.',
-            why: 'Miners are structural, price-insensitive sellers who must cover energy costs. When revenue spikes far above trend they distribute heavily into strength; when it collapses, weaker miners capitulate and sell inventory, which has repeatedly coincided with cycle lows.',
-            scale: [
-                ['below 0.5', 'miner capitulation — every major bottom', 'good'],
-                ['0.5 to 3.0', 'normal operating range', 'warn'],
-                ['above 4', 'miners paid far above trend — top zone', 'bad'],
-            ],
-            caveat: 'Halvings mechanically halve revenue overnight, which distorts the ratio for months afterwards.',
-            source: 'bitcoin-data.com (free tier, 10 requests/hour).',
-        },
-    },
-    {
-        key: 'pi_cycle',
-        label: 'Pi Cycle Top (111DMA / 2×350DMA)',
-        category: 'price',
-        weight: 8,
-        // Ratio >= 1.0 = the crossover has fired (historical top zone, score 0).
-        // ~0.45 and below = early-cycle / post-capitulation (score 100).
-        // Self-computed from price, so unlike the on-chain block it can never
-        // go dark on an API outage.
-        score(v) {
-            if (v === null) return null;
-            return clamp(mapRange(v, 1.0, 0.45, 0, 100), 0, 100);
-        },
-        fmt: v => {
-            if (v === null) return '—';
-            const pct = (v * 100).toFixed(1);
-            return v >= 1
-                ? `${pct}% — crossover FIRED (top signal)`
-                : `${pct}% of the way to crossover`;
-        },
-        info: {
-            tracks: 'How close the 111-day moving average is to crossing above twice the 350-day moving average. Shown as a percentage of the way there, so it reads as a continuous gauge rather than an on/off trigger.',
-            why: 'When that crossover fires it has marked cycle tops within a handful of days — 2013 (both peaks), 2017, and April 2021. The ratio 350/111 is approximately π, which is where the name comes from and is almost certainly coincidence.',
-            scale: [
-                ['below 50%', 'early cycle / post-capitulation', 'good'],
-                ['50% to 85%', 'mid-to-late bull, worth watching', 'warn'],
-                ['85% to 100%', 'approaching the crossover', 'bad'],
-                ['100% or above', 'crossover fired — historical top', 'bad'],
-            ],
-            caveat: 'It did NOT fire at the Nov 2021 lower high or the Oct 2025 top, and its reliability under ETF-era market structure is untested. Kept at modest weight for that reason.',
-            source: 'Self-computed from Binance daily candles — needs no external API, so it keeps working when the on-chain sources are rate-limited.',
-        },
-    },
-    {
         key: 'ma200w_mult',
         label: '200-Week MA Multiple',
         category: 'price',
-        weight: 10,
+        weight: 15,
         // <1.0x = deep-bottom zone (100) ... >4x = historically stretched (0)
         score(v) {
             if (v === null) return null;
@@ -170,7 +120,7 @@ const SIGNAL_DEFS = [
         key: 'ssr',
         label: 'Stablecoin Supply Ratio (percentile)',
         category: 'liquidity',
-        weight: 9,
+        weight: 14,
         // v is a 0-1 percentile rank of SSR within trailing 2yr window.
         // Low percentile (low SSR) = lots of dry powder relative to BTC cap = accumulation-favorable.
         score(v) {
@@ -194,7 +144,7 @@ const SIGNAL_DEFS = [
         key: 'etf_flow',
         label: 'US Spot ETF Net Flow (30d)',
         category: 'institutional',
-        weight: 10,
+        weight: 15,
         // v is a 0-1 percentile rank of the trailing 30-day net flow within
         // an ~18-month window. Heavy outflows (low percentile) have marked
         // capitulation; heavy inflows (high percentile) accompany tops.
@@ -218,35 +168,10 @@ const SIGNAL_DEFS = [
         },
     },
     {
-        key: 'funding',
-        label: 'Perp Funding Rate (8h, BTCUSDT)',
-        category: 'leverage',
-        weight: 7,
-        // Deeply negative (crowded shorts) = accumulation-favorable (100).
-        // Elevated positive (overheated longs) = distribution risk (0).
-        score(v) {
-            if (v === null) return null;
-            const pct = v * 100; // convert fraction to %
-            return clamp(mapRange(pct, 0.08, -0.04, 0, 100), 0, 100);
-        },
-        fmt: v => v === null ? '—' : `${(v * 100).toFixed(4)}%/8h`,
-        info: {
-            tracks: 'The fee paid every 8 hours between long and short holders of perpetual futures to keep the contract pinned to spot price. Positive means longs are paying shorts.',
-            why: 'It is a direct read on crowded positioning. Sustained high positive funding means the market is heavily leveraged long — fuel for a liquidation cascade. Deeply negative funding means shorts are crowded, which has repeatedly preceded squeeze rallies off local lows.',
-            scale: [
-                ['below −0.03%', 'crowded shorts — squeeze risk upward', 'good'],
-                ['around 0.01%', 'neutral baseline', 'warn'],
-                ['above 0.05–0.10%', 'overheated longs — correction risk', 'bad'],
-            ],
-            caveat: 'This is a short-horizon signal (days, not months), so it says little about cycle position on its own. Weighted accordingly.',
-            source: 'Binance perpetual futures API.',
-        },
-    },
-    {
         key: 'fear_greed',
         label: 'Crypto Fear & Greed Index',
         category: 'sentiment',
-        weight: 10,
+        weight: 16,
         // 0 Extreme Fear (100) ... 100 Extreme Greed (0) — inverted, contrarian.
         score(v) {
             if (v === null) return null;
@@ -271,7 +196,7 @@ const SIGNAL_DEFS = [
         key: 'rsi_monthly',
         label: 'Monthly RSI (14)',
         category: 'price',
-        weight: 5,
+        weight: 8,
         // <30 capitulation (100) ... >85 euphoria (0)
         score(v) {
             if (v === null) return null;
@@ -295,7 +220,6 @@ const SIGNAL_DEFS = [
 const CATEGORY_LABELS = {
     onchain:       'On-Chain Valuation',
     liquidity:     'Dry Powder / Liquidity',
-    leverage:      'Derivatives & Leverage',
     institutional: 'Institutional Flows',
     sentiment:     'Sentiment',
     price:         'Price Technicals',

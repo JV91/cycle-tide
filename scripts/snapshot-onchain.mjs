@@ -19,10 +19,11 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, '..', 'data', 'onchain.json');
 
+// NUPL only. MVRV Z and Puell were removed from the model on 2026-10-10 (see
+// js/constants.js), which also cuts this from three requests to one against a
+// provider that allows ten an hour.
 const SERIES = [
-    { key: 'mvrv_z', path: 'mvrv-zscore',    field: 'mvrvZscore' },
     { key: 'nupl',   path: 'nupl',           field: 'nupl' },
-    { key: 'puell',  path: 'puell-multiple', field: 'puellMultiple' },
 ];
 
 function get(url) {
@@ -71,7 +72,11 @@ if (!Object.keys(out).length) {
 let existing = {};
 try { existing = JSON.parse(fs.readFileSync(OUT, 'utf8')).series || {}; } catch {}
 
-const merged = { ...existing, ...out };
+// Keep only series the model still uses, so retired ones do not sit frozen
+// in the file looking like live data.
+const wanted = new Set(SERIES.map(x => x.key));
+const kept = Object.fromEntries(Object.entries(existing).filter(([k]) => wanted.has(k)));
+const merged = { ...kept, ...out };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify({
     generated: new Date().toISOString(),

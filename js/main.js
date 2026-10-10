@@ -2,27 +2,20 @@
 
 const SIGNAL_MIN_WEIGHT_PCT = 0; // shown regardless; confidence reflects available weight
 
-// bitcoin-data.com rate-limits aggressively (per-IP, per-minute) — space
-// these out rather than firing them concurrently or back-to-back.
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-async function fetchOnchainSequential() {
-    const mvrv = await fetchMvrvZScore();   await sleep(600);
-    const nupl = await fetchNupl();         await sleep(600);
-    const puell = await fetchPuellMultiple();
-    return { mvrv, nupl, puell };
-}
 
 // All loaded series live here so any past date can be scored without refetching.
 let SERIES = null;
 
 async function loadAllSignals() {
-    const [daily, onchain, stableSupply, fearGreed, funding, etfFlows] =
+    // NUPL is the only on-chain series left in the model, so bitcoin-data.com
+    // (10 requests/hour) now costs one request per load instead of three.
+    const [daily, nupl, stableSupply, fearGreed, etfFlows] =
         await Promise.all([
             fetchBTCDaily(),
-            fetchOnchainSequential(),
+            fetchNupl(),
             fetchStablecoinSupply(),
             fetchFearGreed(),
-            fetchFundingRate(),
             fetchEtfFlows(),
         ]);
 
@@ -30,7 +23,6 @@ async function loadAllSignals() {
     // Deliberately not in the Promise.all above: neither is a signal input and
     // neither must ever be able to fail the load.
     await fetchIssuerFigures();
-    const { mvrv, nupl, puell } = onchain;
 
     if (!daily || !daily.length) {
         throw new Error('Could not load BTC price history (Binance klines) — cannot compute anything.');
@@ -43,13 +35,9 @@ async function loadAllSignals() {
         ath_drawdown: computeAthDrawdown(daily).series,
         ma200w_mult:  computeMa200wMultiple(daily).series,
         rsi_monthly:  computeMonthlyRSI(daily).series,
-        pi_cycle:     computePiCycle(daily).series,
         etf_flow:     etfFlows ? computeEtfFlowPercentile(etfFlows) : [],
         ssr:          stableSupply ? computeSSRPercentileSeries(daily, supply, stableSupply) : [],
-        mvrv_z:       mvrv      || [],
         nupl:         nupl      || [],
-        puell:        puell     || [],
-        funding:      funding   || [],
         fear_greed:   fearGreed || [],
     };
 
@@ -60,9 +48,8 @@ async function loadAllSignals() {
 // Every signal is backed by a full historical series, so this works for any
 // date in range — that's what powers the date browser.
 function valuesAsOf(ts) {
-    const keys = ['ath_drawdown', 'mvrv_z', 'nupl', 'puell', 'pi_cycle',
-                  'ma200w_mult', 'ssr', 'funding', 'fear_greed', 'rsi_monthly',
-                  'etf_flow'];
+    // Derived from the definitions so the list cannot drift from the model.
+    const keys = SIGNAL_DEFS.map(d => d.key);
     const values = {};
     for (const k of keys) values[k] = latestAsOf(SERIES[k], ts, k);
     return values;
@@ -646,7 +633,7 @@ function renderDataAge() {
         `Price history & holdings file: ${files ? fmtAgo(files) : 'not loaded'}`,
         `Strive capital table: 8-K as of ${asst?.asOf || '—'}`,
         `ETF flows: through ${lastDay(SERIES?.etf_flow)}`,
-        `On-chain (MVRV, NUPL, Puell): through ${lastDay(SERIES?.mvrv_z)} — the provider publishes about a week behind`,
+        `On-chain (NUPL): through ${lastDay(SERIES?.nupl)} — the provider publishes about a week behind`,
         'Files are refreshed by a scheduled job several times a day; this page rechecks them every 30 min.',
     ].join('\n');
 }

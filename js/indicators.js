@@ -33,46 +33,6 @@ function computeMa200wMultiple(daily) {
     return { series, latest: series.length ? series[series.length - 1].value : null };
 }
 
-// ── Pi Cycle Top ───────────────────────────────────────────────────────────
-// 111-day SMA vs 2 × 350-day SMA. When the 111DMA crosses ABOVE 2×350DMA it
-// has marked cycle tops within days (2013 both peaks, 2017, 2021). 350/111 ≈ π.
-//
-// Scored as the RATIO 111DMA / (2 × 350DMA) rather than the bare crossover,
-// so it contributes a continuous "how close to a top" reading instead of a
-// binary that's 0 for years at a time:
-//   ratio >= 1.0  → crossover fired, historical top zone
-//   ratio ~ 0.4   → early cycle / deep bear
-//
-// Caveat worth knowing: this has not clearly re-triggered in the ETF era, and
-// some analysts consider its reliability untested under the post-2024 market
-// structure. It carries modest weight for that reason.
-function computePiCycle(daily) {
-    const FAST = 111, SLOW = 350;
-    if (daily.length < SLOW) return { series: [], latest: null, crossed: false };
-
-    const sma = (n) => {
-        const out = new Array(daily.length).fill(null);
-        let sum = 0;
-        for (let i = 0; i < daily.length; i++) {
-            sum += daily[i].close;
-            if (i >= n) sum -= daily[i - n].close;
-            if (i >= n - 1) out[i] = sum / n;
-        }
-        return out;
-    };
-
-    const fast = sma(FAST), slow = sma(SLOW);
-    const series = [];
-    for (let i = 0; i < daily.length; i++) {
-        if (fast[i] === null || slow[i] === null) continue;
-        const denom = 2 * slow[i];
-        if (denom > 0) series.push({ ts: daily[i].ts, value: fast[i] / denom });
-    }
-
-    const latest = series.length ? series[series.length - 1].value : null;
-    return { series, latest, crossed: latest !== null && latest >= 1 };
-}
-
 // Resample daily closes to month-end closes, then standard RSI(14).
 function computeMonthlyRSI(daily) {
     if (!daily.length) return { series: [], latest: null };

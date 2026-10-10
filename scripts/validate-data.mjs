@@ -131,7 +131,7 @@ const CHECKS = {
 
     'data/onchain.json'(cur, prev) {
         const e = [];
-        for (const k of ['mvrv_z', 'nupl', 'puell']) {
+        for (const k of ['nupl']) {
             checkSeries(e, `series.${k}`, cur.series?.[k], 'value', 100);
             noRegression(e, `series.${k}`, cur.series?.[k], prev?.series?.[k]);
         }

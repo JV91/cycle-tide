@@ -20,7 +20,7 @@ const CACHE_KEY = 'cycletide_cache_v2';
         }
     } catch { /* private mode / storage disabled */ }
 })();
-const CACHE_TTL_MS = 15 * 60 * 1000;            // 15 min — price/funding/sentiment
+const CACHE_TTL_MS = 15 * 60 * 1000;            // 15 min — price/sentiment
 const DAILY_CACHE_TTL_MS = 20 * 60 * 60 * 1000; // 20h — on-chain updates once daily,
                                                 // and the provider allows only 10 req/hour
 
@@ -207,9 +207,9 @@ async function fetchOnchainSeries(key, path, field) {
     return merged.length ? merged : null;
 }
 
-const fetchMvrvZScore    = () => fetchOnchainSeries('mvrv_z', 'mvrv-zscore', 'mvrvZscore');
-const fetchNupl          = () => fetchOnchainSeries('nupl', 'nupl', 'nupl');
-const fetchPuellMultiple = () => fetchOnchainSeries('puell', 'puell-multiple', 'puellMultiple');
+// NUPL is the only on-chain series the model still uses (MVRV Z and Puell
+// were removed on 2026-10-10 — see js/constants.js).
+const fetchNupl = () => fetchOnchainSeries('nupl', 'nupl', 'nupl');
 
 // ── US spot BTC ETF net flows ────────────────────────────────────────────────
 // Served entirely from the committed snapshot (data/etf-flows.json, refreshed
@@ -246,31 +246,6 @@ async function fetchFearGreed() {
     });
 }
 
-// ── Binance funding rate (BTCUSDT perp) ──────────────────────────────────────
-// Funding settles every 8h, so 1000 rows ≈ 333 days, not 1000 days. Page
-// backwards to build a couple of years of history — otherwise the signal is
-// blank for any date older than the first page and the whole
-// "Derivatives & Leverage" category goes dark on historical views.
-async function fetchFundingRate() {
-    return cachedFetch('funding_rate', async () => {
-        const all = [];
-        let endTime = null;
-        for (let i = 0; i < 8; i++) {
-            const url = 'https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000'
-                + (endTime ? '&endTime=' + endTime : '');
-            const batch = await fetchJSON(url);
-            if (!batch.length) break;
-            all.push(...batch);
-            endTime = batch[0].fundingTime - 1;
-            if (batch.length < 1000) break;
-        }
-        return all
-            .map(r => ({ ts: r.fundingTime, value: parseFloat(r.fundingRate) }))
-            .filter(r => !isNaN(r.value))
-            .sort((a, b) => a.ts - b.ts);
-    });
-}
-
 // ── Helpers: latest value at/before a timestamp from a {ts,value}[] series ──
 // The timestamp of the row actually used is recorded in VALUE_TS (keyed by the
 // caller). Without it nothing downstream can tell a value computed from today's
@@ -298,11 +273,8 @@ function latest(series) {
 
 // Signal key → the cache entry whose fetch status explains its availability.
 const SIGNAL_SOURCE = {
-    mvrv_z: 'onchain_mvrv-zscore',
     nupl:   'onchain_nupl',
-    puell:  'onchain_puell-multiple',
     ssr:    'stablecoin_supply',
-    funding: 'funding_rate',
     fear_greed: 'fear_greed',
 };
 
