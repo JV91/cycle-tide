@@ -55,6 +55,46 @@ than after its "bottom" readings.
 Five of the seven overlap heavily (drawdown, NUPL, 200-week
 MA, RSI), so read this as about five independent ideas, not seven.
 
+### What the score does not measure: direction
+
+The score says how cheap or expensive price is against its own history. It
+does not know which way price is heading. It is highest at a low, falls all
+the way through a recovery, is lowest at a top and rises all the way through a
+decline — so the same price reads differently depending on the mood around it:
+$86k in December 2025 scored 70 (extreme fear, ETF outflows), $83k in October
+2026 scored 48.
+
+The cost is real and it repeats. After each of the last three tops (April
+2021, November 2021, October 2025) the score reached 55 or more within 24–37
+days, and price went on to fall a further 36%, 68% and 42%.
+
+Three ways of adding direction were tested on 2026-10-10. None went into the
+score:
+
+- **Price trend** (six definitions, including price against its 200-day
+  average and the 50-day against the 200-day). Sampled every 30 days in the
+  55–75 band it looked decisive: median +37% over the next 180 days in an
+  uptrend, −27% in a downtrend. Counted as separate stretches it was not: 4 of
+  9 uptrend stretches and 7 of 13 downtrend stretches were followed by a
+  further drop of 37% or more within a year, and the split reversed in the
+  2024–26 cycle. Trend also turns weeks to months late (down 11–104 days after
+  a top, up 49–130 days after a low), so blended in it would lower the score
+  at every low and raise it at every top. For a fixed monthly buyer, holding
+  cash back in the downtrend half of the middle band would have added about 1%
+  more BTC than buying flat since 2018.
+- **Which extreme the score visited last** (after a top or after a bottom).
+  Fails, because the score itself reaches 75 early in a bear market: February
+  2018 at $9.2k, January 2022 at $35k, February 2026 at $73k.
+- **The cycle clock.** It does tell the two apart, and is shown under the
+  score, but stays out of it for the reasons below.
+
+What changed instead is wording. The band names used to name a market phase
+("Phase 2 — Early Bull"), which the score cannot know; they now describe
+valuation (Deep discount, Discounted, Mid-range, Stretched, Overheated). And
+when the score reads "accumulate" after the stretch where earlier cycles
+topped but before the stretch where they bottomed, the line under the call
+says so.
+
 ### The four-year cycle clock (shown, not scored)
 
 Under the score, a small timeline shows where the viewed date sits in the

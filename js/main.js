@@ -126,13 +126,18 @@ function computeComposite(values) {
     };
 }
 
+// The band names say how cheap or expensive price is, and nothing about which
+// way the market is heading. They used to name a market phase ("Phase 2 — Early
+// Bull", "Late Bull"), which the score cannot know: it passes through 55-75 on
+// the way up from a low and again on the way down from a top. In December 2025
+// it read 70 and was labelled "Early Bull" two months into a bear market.
 function phaseForScore(score) {
     if (score === null) return { label: 'Unknown', signal: 'hold' };
-    if (score >= 75) return { label: 'Phase 1 — Accumulation', signal: 'accumulate' };
-    if (score >= 55) return { label: 'Phase 2 — Early Bull',   signal: 'accumulate' };
-    if (score >= 35) return { label: 'Neutral / Transition',   signal: 'hold' };
-    if (score >= 15) return { label: 'Late Bull / Distribution Watch', signal: 'distribute' };
-    return { label: 'Phase 4 — Distribution', signal: 'distribute' };
+    if (score >= 75) return { label: 'Deep discount', signal: 'accumulate' };
+    if (score >= 55) return { label: 'Discounted',    signal: 'accumulate' };
+    if (score >= 35) return { label: 'Mid-range',     signal: 'hold' };
+    if (score >= 15) return { label: 'Stretched — distribution watch', signal: 'distribute' };
+    return { label: 'Overheated — distribution', signal: 'distribute' };
 }
 
 function fmtUSD(v) {
@@ -191,7 +196,7 @@ function renderFor(ts) {
     if (reliable) {
         sigEl.textContent = phase.signal.toUpperCase();
         sigEl.className = 'signal-pill ' + signalClass(phase.signal);
-        document.getElementById('signalSub').textContent = signalSubtext(phase.signal);
+        document.getElementById('signalSub').textContent = signalSubtext(phase.signal, ctx.actualTs);
     } else {
         sigEl.textContent = 'NO CALL';
         sigEl.className = 'signal-pill sig-degraded';
@@ -336,10 +341,30 @@ function stepDay(delta) {
 function signalClass(signal) {
     return signal === 'accumulate' ? 'sig-good' : signal === 'distribute' ? 'sig-critical' : 'sig-warning';
 }
-function signalSubtext(signal) {
-    if (signal === 'accumulate') return 'Historically accumulation-favorable zone';
+// The line under the call. The score measures price level, not direction, and
+// two consequences of that are spelled out here rather than left to be found
+// out the hard way.
+//
+// Early in a bear market the score reads "cheap" long before the low: after
+// each of the last three tops (Apr 2021, Nov 2021, Oct 2025) it reached 55+
+// within 24-37 days and price fell a further 36%, 68% and 42%. Adding price
+// trend to the score was tested (2026-10-10) and not adopted — see the README,
+// "What the score does not measure". The cycle clock is the one thing that
+// tells those readings apart, so the caution is keyed to it: after the stretch
+// where earlier cycles topped and before the stretch where they bottomed.
+// Wording only; the number and the call are unchanged.
+function signalSubtext(signal, ts) {
     if (signal === 'distribute') return 'Historically distribution-risk zone';
-    return 'Mixed signals — no strong historical edge';
+    if (signal !== 'accumulate') {
+        return 'Neither cheap nor expensive. The score reads price level, not direction: '
+             + 'it peaks at a low and falls as price recovers.';
+    }
+    const c = typeof cycleClock === 'function' ? cycleClock(ts) : null;
+    const early = c && c.tops && c.bottoms && c.day > c.tops.hi && c.day < c.bottoms.lo;
+    if (!early) return 'Historically accumulation-favorable zone';
+    return 'Cheap against history, but early: earlier cycles were still falling at this point '
+         + '(see the clock below). After each of the last three tops the score got here within '
+         + '3–5 weeks and price fell a further 36–68%.';
 }
 
 // Which signals are currently expanded — kept outside the render so the panel
