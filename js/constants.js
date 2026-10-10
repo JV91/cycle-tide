@@ -257,12 +257,19 @@ const HALVINGS = [
 // Historical backtest reference events (approximate score reconstructions
 // using publicly known historical indicator readings at each event).
 const BACKTEST_EVENTS = [
-    { date: '2015-01', label: '2015-01 bottom (~$152, -84% from $1,163 ATH)',   score: 96, phase: 'Phase 1 — Accumulation' },
-    { date: '2017-12', label: '2017-12 top (~$19,800, new ATH)',                score: 8,  phase: 'Neutral / Transition' },
-    { date: '2018-12', label: '2018-12 bottom (~$3,150, -84% from $19,800 ATH)',score: 93, phase: 'Phase 1 — Accumulation' },
-    { date: '2020-03', label: '2020-03 COVID crash (~$4,900)',                  score: 78, phase: 'Phase 1 — Accumulation' },
-    { date: '2021-11', label: '2021-11 top (~$69,000, new ATH, mania)',         score: 6,  phase: 'Neutral / Transition' },
-    { date: '2022-11', label: '2022-11 bottom (~$15,600, -77%, FTX collapse)',  score: 91, phase: 'Phase 1 — Accumulation' },
-    { date: '2023-10', label: '2023-10 liquidity reversal (~$27,000)',          score: 71, phase: 'Phase 1 — Accumulation' },
-    { date: '2025-10', label: '2025-10 top (~$126,198, new ATH)',               score: 12, phase: 'Neutral / Transition' },
+    // Each event carries the DAY it happened. The table used to score every
+    // event on the 15th of its month, which put the 2025 top nine days after
+    // the top (and after the 10 October crash): it showed 39 where the date
+    // browser, on the real date, showed 17. No scores are stored here — every
+    // row is computed live from the same code as the dashboard.
+    { date: '2015-01-14', label: '2015-01 bottom (~$152, -84% from $1,163 ATH)' },
+    { date: '2017-12-17', label: '2017-12 top (~$19,800, new ATH)' },
+    { date: '2018-12-15', label: '2018-12 bottom (~$3,150, -84% from $19,800 ATH)' },
+    { date: '2020-03-13', label: '2020-03 COVID crash (~$4,900)' },
+    { date: '2021-04-14', label: '2021-04 first top (~$64,800)' },
+    { date: '2021-11-10', label: '2021-11 top (~$69,000, new ATH, mania)' },
+    { date: '2022-11-21', label: '2022-11 bottom (~$15,600, -77%, FTX collapse)' },
+    { date: '2023-10-15', label: '2023-10 liquidity reversal (~$27,000)' },
+    { date: '2025-10-06', label: '2025-10 top (~$126,200, new ATH)' },
+    { date: '2026-07-01', label: '2026-07 low (~$57,800, -54%)' },
 ];

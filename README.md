@@ -55,6 +55,20 @@ than after its "bottom" readings.
 Five of the seven overlap heavily (drawdown, NUPL, 200-week
 MA, RSI), so read this as about five independent ideas, not seven.
 
+### The four-year cycle clock (shown, not scored)
+
+Under the score, a small timeline shows where the viewed date sits in the
+halving cycle, against the days on which earlier cycles topped and bottomed.
+It is calendar-only and **does not feed the score**.
+
+Calibrated on three cycles and checked on the fourth, a days-since-halving
+clock placed every held-out top at 12–21 and every held-out bottom at 72–100
+on a 0–100 scale. It is still kept out of the score: four cycles is all the
+evidence there is, it would sit at 100 for about 40% of every cycle, it cannot
+react if the cycle breaks, and this cycle has already run early and shallower
+(low on day 803 at −54%, against days 777–924 at −77% to −86%). The windows it
+draws come from the other cycles, never the one being viewed.
+
 Click any signal in the dashboard to see what it tracks, why it's predictive,
 its threshold bands, and — importantly — its caveats.
 

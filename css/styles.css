@@ -1572,3 +1572,80 @@ body {
 @media (max-width: 720px) {
     .data-age { flex: 1 1 100%; }
 }
+
+/* ── Four-year cycle clock (context, not scored) ────────────────────────── */
+.cycle-clock {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    text-align: left;
+}
+.cycle-clock:empty { display: none; }
+.cc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.cc-title {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+}
+/* Says plainly that this does not feed the number above it. */
+.cc-tag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 6px;
+    white-space: nowrap;
+    cursor: help;
+}
+.cc-day {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.cc-day span { font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.cc-track {
+    position: relative;
+    height: 12px;
+    margin-top: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+}
+.cc-zone { position: absolute; top: 0; bottom: 0; }
+.cc-zone-top    { background: var(--critical-bg); border-inline: 1px solid var(--critical); }
+.cc-zone-bottom { background: var(--good-bg);     border-inline: 1px solid var(--good); }
+/* This cycle's own turning points: thin ticks, so they read as events inside
+   (or outside) the shaded windows rather than as more windows. */
+.cc-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; }
+.cc-mark-top    { background: var(--critical); }
+.cc-mark-bottom { background: var(--good); }
+.cc-now {
+    position: absolute;
+    top: -5px; bottom: -5px;
+    width: 3px; margin-left: -1.5px;
+    background: var(--text-primary);
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--bg);
+}
+.cc-scale, .cc-legend {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--text-muted);
+}
+.cc-legend { justify-content: flex-start; gap: 14px; }
+.cc-sw { display: inline-block; width: 9px; height: 9px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
+.cc-sw-top    { background: var(--critical-bg); border: 1px solid var(--critical); }
+.cc-sw-bottom { background: var(--good-bg);     border: 1px solid var(--good); }
+.cc-read { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.cc-note { margin: 6px 0 0; font-size: 11px; line-height: 1.5; color: var(--text-muted); }
+

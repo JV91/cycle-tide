@@ -239,7 +239,11 @@ async function fetchStablecoinSupply() {
 // ── Alternative.me Fear & Greed Index ────────────────────────────────────────
 async function fetchFearGreed() {
     return cachedFetch('fear_greed', async () => {
-        const json = await fetchJSON('https://api.alternative.me/fng/?limit=400');
+        // limit=0 is the full history (from Feb 2018). With limit=400 this
+        // signal — 16% of the score — was missing for every date older than
+        // about 13 months, so the date browser and the backtest table scored
+        // 2018-2022 without it, and the 2025 top was a month from losing it.
+        const json = await fetchJSON('https://api.alternative.me/fng/?limit=0');
         return json.data
             .map(d => ({ ts: parseInt(d.timestamp, 10) * 1000, value: parseFloat(d.value) }))
             .sort((a, b) => a.ts - b.ts);

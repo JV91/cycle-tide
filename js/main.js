@@ -263,6 +263,7 @@ function renderFor(ts) {
     const maRow = breakdown.find(b => b.key === 'ma200w_mult');
     if (maRow) maRow.extra = latestAsOf(SERIES.ma200w_raw, ts + 86400000 - 1);
     renderBreakdown(breakdown);
+    renderCycleClock(ctx.actualTs);
     renderDateControls(ctx.actualTs);
 }
 
@@ -448,7 +449,7 @@ function renderBacktest() {
     const { first, last } = dayBounds();
 
     for (const ev of BACKTEST_EVENTS) {
-        const evTs = new Date(ev.date + '-15').getTime();
+        const evTs = Date.parse(ev.date + 'T00:00:00Z');   // the event's own day
         if (evTs < first || evTs > last) continue;   // no data — omit entirely
 
         const c = computeComposite(valuesAsOf(evTs));

@@ -74,6 +74,8 @@
                 <div class="stat-row"><dt>Days since ATH</dt><dd id="daysSinceAth">—</dd></div>
                 <div class="stat-row"><dt>Confidence</dt><dd id="confidenceVal" class="confidence-val">—</dd></div>
             </dl>
+
+            <div id="cycleClock" class="cycle-clock"></div>
         </section>
 
         <!-- Breakdown card -->
@@ -109,10 +111,11 @@
     <section class="card backtest-card">
         <h2 class="card-title">HISTORICAL BACKTEST — SCORE AT MAJOR CYCLE EVENTS</h2>
         <p class="backtest-note">
-            Every row is scored live from the same data the dashboard uses — click one
-            to load its full breakdown above. Events before the free on-chain APIs'
-            history (~2022) are omitted rather than shown as estimates, so nothing here
-            is a guess presented beside a computation.
+            Every row is scored live, on the day the event happened, by the same code
+            as the dashboard — click one to load its full breakdown above. Older
+            events are scored on fewer signals, because not every data source reaches
+            back that far; a row is left out entirely when less than half the model
+            has data for that date, rather than shown as an estimate.
         </p>
         <div class="table-wrap">
             <table class="backtest-table">
@@ -138,6 +141,7 @@
 <script src="js/data.js"></script>
 <script src="js/indicators.js"></script>
 <script src="js/projection.js"></script>
+<script src="js/cycle_clock.js"></script>
 <script src="js/chart.js"></script>
 <script src="js/live.js"></script>
 <script src="js/asset_metrics.js"></script>
