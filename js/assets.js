@@ -95,6 +95,10 @@ async function deriveHoldingsHistory() {
 async function refreshAssetQuotes() {
     try { await applyLiveQuotes(); } catch { /* snapshot closes stand */ }
 
+    // The allocation card converts the franc plan into dollars; same cadence
+    // as the share prices it sits beside.
+    try { await fetchChfRate(); } catch { /* card says the rate is unavailable */ }
+
     // Strive has no live API, so its capital structure comes from the weekly
     // 8-K table; valued at the live price just laid over the series. Never
     // allowed to throw: a miss leaves the filing-derived path.

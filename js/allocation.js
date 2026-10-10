@@ -25,6 +25,47 @@ const ALLOC_PLAN = {
     treasury: 2000,   // to whichever treasury company is cheaper
 };
 
+// ── CHF → USD ───────────────────────────────────────────────────────────────
+//
+// The plan is in francs; Bitcoin and both stocks are priced in dollars. The
+// card used to divide one by the other as if a franc were a dollar, which
+// understated every "how much does this buy" figure by the whole exchange rate
+// (about 17% at 1.20 USD per CHF: 0.072 BTC shown where CHF 6,000 bought 0.087).
+//
+// Kraken's USD/CHF market is live around the clock and answers browsers. The
+// two fallbacks are daily reference rates (ECB via Frankfurter, then
+// open.er-api.com), close enough for a monthly buy and labelled as daily.
+// Checked 2026-10-10: 1.2037 / 1.2033 / 1.2038. If none answers, FX stays null
+// and the card says so rather than quietly going back to 1:1.
+let FX = null;   // { usdPerChf, source, live, ts }
+
+async function fetchChfRate() {
+    const ok = v => Number.isFinite(v) && v > 0.5 && v < 3;
+    const sources = [
+        async () => {
+            const j = await (await fetch('https://api.kraken.com/0/public/Ticker?pair=USDCHF')).json();
+            const t = Object.values(j?.result || {})[0];
+            const chfPerUsd = parseFloat(t?.c?.[0]);
+            return { usdPerChf: 1 / chfPerUsd, source: 'Kraken', live: true };
+        },
+        async () => {
+            const j = await (await fetch('https://api.frankfurter.dev/v1/latest?base=CHF&symbols=USD')).json();
+            return { usdPerChf: j?.rates?.USD, source: 'ECB reference rate ' + (j?.date || ''), live: false };
+        },
+        async () => {
+            const j = await (await fetch('https://open.er-api.com/v6/latest/CHF')).json();
+            return { usdPerChf: j?.rates?.USD, source: 'open.er-api.com daily rate', live: false };
+        },
+    ];
+    for (const get of sources) {
+        try {
+            const r = await get();
+            if (ok(r.usdPerChf)) { FX = { ...r, ts: Date.now() }; return FX; }
+        } catch { /* try the next source */ }
+    }
+    return FX;   // all failed: keep the last good rate from this session, if any
+}
+
 // Below this, a wrapper buys meaningfully more Bitcoin than spot. At or above
 // it, you are taking equity/dilution/single-name risk for no extra exposure.
 const ALLOC_MIN_DISCOUNT = 0.95;
@@ -116,8 +157,13 @@ function renderAllocation() {
     const best = a.candidates[0];
     const P = ALLOC_PLAN;
     const worthIt = best.mnav < ALLOC_MIN_DISCOUNT;
-    const shares = P.treasury / best.price;
-    const btcUnits = P.btc / a.btcPrice;
+    // Francs to dollars before dividing by a dollar price. null when no rate
+    // could be fetched — the amounts are then left out, not guessed.
+    const fx = FX?.usdPerChf ?? null;
+    const usd = chf => fx === null ? null : chf * fx;
+    const shares = fx === null ? null : usd(P.treasury) / best.price;
+    const btcUnits = fx === null ? null : usd(P.btc) / a.btcPrice;
+    const noFx = `${P.currency} exchange rate unavailable — amount not shown`;
 
     const age = a.age;
     const stale = age && age.sessionsBehind >= 1;
@@ -158,7 +204,9 @@ function renderAllocation() {
             <div class="alloc-row">
                 <span class="alloc-amt">${P.currency} ${P.btc.toLocaleString()}</span>
                 <span class="alloc-target">Bitcoin <span class="alloc-tick">spot</span></span>
-                <span class="alloc-detail">≈ ${btcUnits.toFixed(5)} BTC at ${fmtUSD(a.btcPrice)}</span>
+                <span class="alloc-detail">${btcUnits === null
+                    ? `at ${fmtUSD(a.btcPrice)} · ${noFx}`
+                    : `≈ ${btcUnits.toFixed(5)} BTC at ${fmtUSD(a.btcPrice)} · ${P.currency} ${P.btc.toLocaleString()} = ${fmtUSD(usd(P.btc))}`}</span>
             </div>
             <div class="alloc-row${worthIt ? '' : ' alloc-skip'}">
                 <span class="alloc-amt">${P.currency} ${P.treasury.toLocaleString()}</span>
@@ -166,10 +214,16 @@ function renderAllocation() {
                     ? escapeHtml(best.label) + ' <span class="alloc-tick">' + escapeHtml(best.ticker) + '</span>'
                     : 'Bitcoin <span class="alloc-tick">spot</span> — neither at a discount'}</span>
                 <span class="alloc-detail">${worthIt
-                    ? `≈ ${shares.toFixed(1)} shares at ${fmtEq(best.price)} · ${best.uplift.toFixed(2)}× the BTC exposure of spot`
+                    ? (shares === null
+                        ? `at ${fmtEq(best.price)} · ${noFx}`
+                        : `≈ ${shares.toFixed(1)} shares at ${fmtEq(best.price)} · ${P.currency} ${P.treasury.toLocaleString()} = ${fmtUSD(usd(P.treasury))}`)
+                      + ` · ${best.uplift.toFixed(2)}× the BTC exposure of spot`
                     : 'both at or above 0.95× mNAV, so the wrapper buys no extra Bitcoin'}</span>
             </div>
         </div>
+        <p class="alloc-fx">${fx === null
+            ? `No ${P.currency}/USD rate could be fetched, so the amounts above are left out. The comparison below does not depend on it.`
+            : `1 ${P.currency} = ${fx.toFixed(4)} USD · ${escapeHtml(FX.source)}${FX.live ? ', live' : ''}. Bitcoin is ${P.currency} ${Math.round(a.btcPrice / fx).toLocaleString()}.`}</p>
 
         <div class="table-wrap">
             <table class="backtest-table alloc-compare">

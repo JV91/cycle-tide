@@ -133,6 +133,13 @@ mechanism, not that backtest.
 
 Amounts live in `ALLOC_PLAN` at the top of `js/allocation.js`.
 
+The plan is in Swiss francs and everything it buys is priced in dollars, so
+the card converts at a live CHF/USD rate (Kraken, with two daily reference
+rates as fallbacks) before working out how much Bitcoin or how many shares the
+month's money buys, and shows the rate it used. If no rate can be fetched the
+amounts are left out rather than computed at 1:1. The mNAV comparison is a
+ratio and does not depend on the rate.
+
 ## Treasury company tabs
 
 Two additional tabs cover **Strategy (MSTR)** and **Strive (ASST)** — Bitcoin
@@ -313,6 +320,8 @@ All free, no API keys required:
   (CC BY 4.0; TFTC compiles these from SoSoValue and Farside Investors)
 - [CoinGecko](https://www.coingecko.com) — public-company BTC treasury holdings
 - [SEC EDGAR](https://www.sec.gov/edgar) — diluted shares outstanding (XBRL)
+- [Kraken](https://www.kraken.com) — live CHF/USD rate for the monthly allocation
+  (fallbacks: ECB reference rate via Frankfurter, open.er-api.com)
 - Yahoo Finance — MSTR/ASST daily prices (fetched server-side; the endpoint
   sends no CORS headers, so a browser cannot call it directly)
 

@@ -667,6 +667,9 @@ function renderDataAge() {
         `Share prices: ${quotes ? 'live quotes, fetched ' + fmtAgo(quotes) : 'last committed daily close'}`,
         `Price history & holdings file: ${files ? fmtAgo(files) : 'not loaded'}`,
         `Strive capital table: 8-K as of ${asst?.asOf || '—'}`,
+        (typeof FX !== 'undefined' && FX)
+            ? `CHF rate: ${FX.usdPerChf.toFixed(4)} USD, ${FX.source}, fetched ${fmtAgo(FX.ts)}`
+            : 'CHF rate: not available',
         `ETF flows: through ${lastDay(SERIES?.etf_flow)}`,
         `On-chain (NUPL): through ${lastDay(SERIES?.nupl)} — the provider publishes about a week behind`,
         'Files are refreshed by a scheduled job several times a day; this page rechecks them every 30 min.',
