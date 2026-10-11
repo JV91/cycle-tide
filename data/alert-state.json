@@ -1,14 +1,14 @@
 {
-  "score": 48,
+  "score": 49,
   "band": "HOLD",
   "confidence": 100,
   "staleWeight": 12,
   "staleNote": "Net Unrealized Profit/Loss 7d",
-  "price": 82805,
-  "date": "2026-10-10",
+  "price": 83030,
+  "date": "2026-10-11",
   "previousBand": "HOLD",
   "missingSignals": [],
   "sources": {
-    "priceHistory": "api.binance.com"
+    "priceHistory": "data-api.binance.vision"
   }
 }
