@@ -1656,3 +1656,80 @@ body {
 .cc-read { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
 .cc-note { margin: 6px 0 0; font-size: 11px; line-height: 1.5; color: var(--text-muted); }
 
+
+/* ── Today card ───────────────────────────────────────────────────────────────
+   The verdict, above the fold. Uses the same sig-* classes as the score card
+   so the two always read the same colour for the same call.
+   -------------------------------------------------------------------------- */
+.today-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 18px;
+}
+
+.today-main {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.today-verdict {
+    flex: 0 0 auto;
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 15px 22px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.today-verdict.sig-good     { background: var(--good-bg);     color: var(--good); }
+.today-verdict.sig-warning  { background: var(--warning-bg);  color: var(--warning); }
+.today-verdict.sig-critical { background: var(--critical-bg); color: var(--critical); }
+.today-verdict.sig-degraded {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px dashed var(--border);
+}
+
+.today-body { min-width: 0; }
+
+.today-line {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+.today-line strong { color: var(--text-primary); }
+.today-dim { color: var(--text-muted); font-size: 12px; }
+
+.today-next {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--warning);
+    margin-top: 6px;
+}
+
+@media (max-width: 640px) {
+    .today-main { flex-direction: column; align-items: stretch; gap: 14px; }
+    .today-verdict { text-align: center; }
+}
+
+/* ── Collapsible cards ────────────────────────────────────────────────────────
+   Fully expanded the page runs ~3400px. The chart and backtest are reference
+   material rather than the daily read, so they fold away; state is remembered.
+   -------------------------------------------------------------------------- */
+.card.is-collapsible > .card-title {
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 0;
+}
+.card.is-collapsible > .card-title::before {
+    content: '▾ ';
+    color: var(--text-muted);
+    font-size: 0.85em;
+}
+.card.is-collapsible.card-collapsed > .card-title::before { content: '▸ '; }
+.card.is-collapsible.card-collapsed > *:not(.card-title) { display: none !important; }
+.card.is-collapsible.card-collapsed { padding-bottom: 20px; }

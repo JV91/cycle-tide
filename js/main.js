@@ -218,6 +218,8 @@ function renderFor(ts) {
             `${why} — score shown for reference only`;
     }
 
+    renderTodayCard({ composite, reliable, phase, ctx, values, confidence });
+
     document.getElementById('btcPrice').textContent = fmtUSD(ctx.price);
     document.getElementById('athPrice').textContent = fmtUSD(ctx.ath);
     document.getElementById('drawdownVal').textContent = fmtPct(values.ath_drawdown);
@@ -573,6 +575,48 @@ async function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 
+// ── Collapsible cards ─────────────────────────────────────────────────────────
+// Chart and backtest are reference material rather than the daily read, so they
+// start folded. Each card remembers its own state.
+document.addEventListener('DOMContentLoaded', () => {
+    const KEY = 'tideCardState';
+    const COLLAPSED_BY_DEFAULT = ['chart-card', 'backtest-card'];
+
+    const read = () => {
+        try { return JSON.parse(localStorage.getItem(KEY) || '{}'); }
+        catch (e) { return {}; }
+    };
+    const write = st => {
+        try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {}
+    };
+
+    const saved = read();
+    document.querySelectorAll('.card').forEach(card => {
+        const title = card.querySelector(':scope > .card-title');
+        if (!title) return;                     // score card has no title row
+        const key = [...card.classList].find(c => c.endsWith('-card'));
+        if (!key) return;
+
+        card.classList.add('is-collapsible');
+        const collapsed = Object.prototype.hasOwnProperty.call(saved, key)
+            ? !!saved[key]
+            : COLLAPSED_BY_DEFAULT.includes(key);
+        card.classList.toggle('card-collapsed', collapsed);
+
+        title.addEventListener('click', () => {
+            card.classList.toggle('card-collapsed');
+            const st = read();
+            st[key] = card.classList.contains('card-collapsed');
+            write(st);
+            // The score chart is an SVG sized on render; redraw it when it
+            // becomes visible again so it fills its box.
+            if (!st[key] && typeof renderScoreChart === 'function') {
+                try { renderScoreChart(); } catch (e) {}
+            }
+        });
+    });
+});
+
 // ── Keeping an open page current ────────────────────────────────────────────
 //
 // Previously nothing did. The snapshot loaders memoized their first fetch for
@@ -710,3 +754,52 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(e => console.warn('[cycletide] refresh on return:', e));
     });
 });
+
+
+// ── Today card ────────────────────────────────────────────────────────────────
+// The verdict, above the fold. Derived entirely from the values the score card
+// renders below, so the two cannot drift apart.
+function renderTodayCard({ composite, reliable, phase, ctx, values, confidence }) {
+    const el = document.getElementById('todayCard');
+    if (!el) return;
+
+    if (composite === null || !reliable) {
+        el.hidden = false;
+        el.innerHTML = `
+            <div class="today-main">
+                <div class="today-verdict sig-degraded">NO CALL</div>
+                <div class="today-body">
+                    <div class="today-line">Too little of the model has data to make a call today.</div>
+                    <div class="today-next">See the score breakdown below for which signals are missing.</div>
+                </div>
+            </div>`;
+        return;
+    }
+
+    const sig = phase.signal;
+    const verdict = sig === 'accumulate' ? 'ACCUMULATE'
+                  : sig === 'distribute' ? 'REDUCE'
+                  : 'HOLD';
+    const dd = values.ath_drawdown;
+    const days = ctx.athTs ? daysBetween(ctx.actualTs, ctx.athTs) : null;
+
+    const next = sig === 'accumulate'
+        ? 'Next action: keep accumulating until the score falls into the distribute band.'
+        : sig === 'distribute'
+            ? 'Next action: trim into strength — the score is in the historical distribution-risk band.'
+            : 'Next action: hold. The score is mid-range; wait for it to reach either band.';
+
+    el.hidden = false;
+    el.innerHTML = `
+        <div class="today-main">
+            <div class="today-verdict ${signalClass(sig)}">${verdict}</div>
+            <div class="today-body">
+                <div class="today-line">
+                    Cycle score <strong>${Math.round(composite)}</strong> — <strong>${escapeHtml(phase.label)}</strong>.
+                    BTC ${fmtUSD(ctx.price)}, ${fmtPct(dd)} below the ${fmtUSD(ctx.ath)} ATH${days !== null ? `, ${days} days on` : ''}.
+                </div>
+                <div class="today-line today-dim">${escapeHtml(signalSubtext(sig, ctx.actualTs))}</div>
+                <div class="today-next">${next}</div>
+            </div>
+        </div>`;
+}
