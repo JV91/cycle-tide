@@ -4,11 +4,11 @@
   "confidence": 100,
   "staleWeight": 12,
   "staleNote": "Net Unrealized Profit/Loss 7d",
-  "price": 80016,
+  "price": 80127,
   "date": "2026-10-26",
   "previousBand": "HOLD",
   "missingSignals": [],
   "sources": {
-    "priceHistory": "data-api.binance.vision"
+    "priceHistory": "api.binance.com"
   }
 }
