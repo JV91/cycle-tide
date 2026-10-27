@@ -1,14 +1,14 @@
 {
   "score": 55,
-  "band": "ACCUMULATE (Phase 2)",
+  "band": "HOLD",
   "confidence": 100,
   "staleWeight": 12,
   "staleNote": "Net Unrealized Profit/Loss 7d",
-  "price": 79789,
+  "price": 80662,
   "date": "2026-10-27",
   "previousBand": "ACCUMULATE (Phase 2)",
   "missingSignals": [],
   "sources": {
-    "priceHistory": "api.binance.com"
+    "priceHistory": "data-api.binance.vision"
   }
 }
