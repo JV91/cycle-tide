@@ -1,11 +1,11 @@
 {
-  "score": 55,
+  "score": 54,
   "band": "HOLD",
   "confidence": 100,
   "staleWeight": 12,
   "staleNote": "Net Unrealized Profit/Loss 7d",
-  "price": 80989,
-  "date": "2026-10-27",
+  "price": 80750,
+  "date": "2026-10-28",
   "previousBand": "HOLD",
   "missingSignals": [],
   "sources": {
