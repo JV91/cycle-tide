@@ -3,9 +3,9 @@
   "band": "HOLD",
   "confidence": 100,
   "staleWeight": 12,
-  "staleNote": "Net Unrealized Profit/Loss 7d",
-  "price": 81312,
-  "date": "2026-10-28",
+  "staleNote": "Net Unrealized Profit/Loss 8d",
+  "price": 81364,
+  "date": "2026-10-29",
   "previousBand": "HOLD",
   "missingSignals": [],
   "sources": {
