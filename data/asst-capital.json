@@ -1,21 +1,21 @@
 {
-  "generated": "2026-11-02T10:54:11.391Z",
+  "generated": "2026-11-02T22:46:49.063Z",
   "note": "Strive capital structure parsed from the most recent 8-K bitcoin-purchase announcement, which tabulates holdings, share classes and preferred. Filed roughly weekly, so this is far fresher than the quarterly 10-Q figures.",
   "company": "ASST",
-  "asOf": "2026-10-23",
-  "filed": "2026-10-26",
-  "accession": "0001628280-26-067141",
-  "btcHoldings": 43000,
-  "classA": 118113644,
-  "classB": 9214702,
-  "effectiveShares": 127328346,
+  "asOf": "2026-10-30",
+  "filed": "2026-11-02",
+  "accession": "0001628280-26-068660",
+  "btcHoldings": 43124,
+  "classA": 118117620,
+  "classB": 9213489,
+  "effectiveShares": 127331109,
   "dilutedShares": 130044690,
   "warrantShares": null,
   "sataShares": 14030176,
   "sataStatedAmount": 100,
-  "cashUsd": 504400000,
-  "strcFairValueUsd": 50177000,
-  "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026067141/asst-20261026.htm",
+  "cashUsd": 490400000,
+  "strcFairValueUsd": 50061000,
+  "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026068660/asst-20261102.htm",
   "history": [
     {
       "asOf": "2026-07-24",
@@ -240,6 +240,22 @@
       "cashUsd": 504400000,
       "strcFairValueUsd": 50177000,
       "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026067141/asst-20261026.htm"
+    },
+    {
+      "asOf": "2026-10-30",
+      "filed": "2026-11-02",
+      "accession": "0001628280-26-068660",
+      "btcHoldings": 43124,
+      "classA": 118117620,
+      "classB": 9213489,
+      "effectiveShares": 127331109,
+      "dilutedShares": 130044690,
+      "warrantShares": null,
+      "sataShares": 14030176,
+      "sataStatedAmount": 100,
+      "cashUsd": 490400000,
+      "strcFairValueUsd": 50061000,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1920406/000162828026068660/asst-20261102.htm"
     }
   ]
 }
