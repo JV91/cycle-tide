@@ -1,14 +1,14 @@
 {
-  "score": 61,
+  "score": 64,
   "band": "ACCUMULATE (Phase 2)",
   "confidence": 100,
-  "staleWeight": 0,
-  "staleNote": null,
-  "price": 76894,
-  "date": "2026-11-02",
+  "staleWeight": 12,
+  "staleNote": "Net Unrealized Profit/Loss 3d",
+  "price": 76657,
+  "date": "2026-11-03",
   "previousBand": "ACCUMULATE (Phase 2)",
   "missingSignals": [],
   "sources": {
-    "priceHistory": "data-api.binance.vision"
+    "priceHistory": "api.binance.com"
   }
 }
