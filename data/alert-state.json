@@ -1,11 +1,11 @@
 {
-  "score": 78,
+  "score": 79,
   "band": "ACCUMULATE (Phase 1)",
   "confidence": 100,
   "staleWeight": 12,
   "staleNote": "Net Unrealized Profit/Loss 7d",
-  "price": 65542,
-  "date": "2026-11-15",
+  "price": 64582,
+  "date": "2026-11-16",
   "previousBand": "ACCUMULATE (Phase 1)",
   "missingSignals": [],
   "sources": {
